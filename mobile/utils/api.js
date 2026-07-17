@@ -1,6 +1,14 @@
 // API Utility for K Hotel Mobile Client
 
-const API_BASE_URL = 'http://localhost:3031/backend/api'; // Replace with server host in production
+const getApiBaseUrl = () => {
+    if (typeof window !== 'undefined' && window.location) {
+        // If hosted in a browser, use the current host origin dynamically
+        return `${window.location.origin}/backend/api`;
+    }
+    return 'http://localhost:3031/backend/api'; // Fallback for local native mobile simulator
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 let userToken = null;
 

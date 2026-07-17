@@ -77,8 +77,8 @@ switch ($action) {
             ]);
             $memberId = $pdo->lastInsertId();
 
-            // If K Plus (Silver or Brown) and voucher is selected, auto-issue the voucher
-            if ($membershipType === 'K Plus' && $cardType !== 'Gold' && $voucherTypeSelection !== 'N/A') {
+            // If K Plus (Silver, Gold, or Brown) and voucher is selected, auto-issue the voucher
+            if ($membershipType === 'K Plus' && $voucherTypeSelection !== 'N/A') {
                 $voucherNumber = 'VCH-' . mt_rand(100000, 999999);
                 $voucherTypeMap = [
                     'Room' => 'K Plus Room',
