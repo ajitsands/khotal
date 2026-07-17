@@ -526,7 +526,7 @@ switch ($action) {
             }
 
             // Debit points
-            $stmtDebit = $pdo->prepare("INSERT INTO points_ledger (member_id, booking_reference, points_redeemed, transaction_type, source, description, transaction_date) VALUES (?, ?, ?, 'Redeemed', 'Admin Desk', ?, CURRENT_DATE)");
+            $stmtDebit = $pdo->prepare("INSERT INTO points_ledger (member_id, booking_reference, points_redeemed, transaction_type, source, description, transaction_date) VALUES (?, ?, ?, 'Redeemed', 'Manual Adjustment', ?, CURRENT_DATE)");
             $stmtDebit->execute([
                 $memberId,
                 'RD-' . mt_rand(1000, 9999),
