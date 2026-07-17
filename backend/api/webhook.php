@@ -29,6 +29,13 @@ if (!hash_equals($calculatedHash, $hash)) {
     exit('Signature verification failed.');
 }
 
+// Handle GitHub ping event
+$event = isset($_SERVER['HTTP_X_GITHUB_EVENT']) ? $_SERVER['HTTP_X_GITHUB_EVENT'] : '';
+if ($event === 'ping') {
+    echo 'pong';
+    exit();
+}
+
 // Check if directory exists
 $repoDir = defined('REPO_DIR') ? REPO_DIR : '';
 if (empty($repoDir) || !is_dir($repoDir)) {
