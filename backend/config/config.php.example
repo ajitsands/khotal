@@ -15,7 +15,7 @@ define('ENCRYPTION_METHOD', 'aes-256-cbc');
 
 // GitHub Webhook Configuration (used by webhook.php for sync)
 define('WEBHOOK_SECRET', 'your_webhook_secret_here');
-define('REPO_DIR', '/path/to/your/repo/on/server');
+define('REPO_DIR', '/home/sandsl23/public_html/khotals.sandslab.com');
 
 // Timezone
 date_default_timezone_set('Asia/Bahrain');
