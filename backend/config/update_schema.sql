@@ -18,7 +18,9 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('currency', 'BHD'),
 ('fb_points_rules', '[{"threshold": 50.000, "points": 10}, {"threshold": 100.000, "points": 20}]'),
 ('departments', '["F&B", "Front Office", "Spa"]'),
-('gold_upgrade_threshold', '500.000')
+('gold_upgrade_threshold', '500.000'),
+('hotel_name', 'The K Hotel'),
+('hotel_sub', 'BAHRAIN')
 ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value);
 
 -- 3b. Seed default redeemable vouchers in settings

@@ -510,6 +510,8 @@ switch ($action) {
         $deptsJson = isset($_POST['departments']) ? trim($_POST['departments']) : '[]';
         $vouchersJson = isset($_POST['redeemable_vouchers']) ? trim($_POST['redeemable_vouchers']) : '[]';
         $goldThreshold = isset($_POST['gold_upgrade_threshold']) ? (float)$_POST['gold_upgrade_threshold'] : 500.000;
+        $hotelName = isset($_POST['hotel_name']) ? trim($_POST['hotel_name']) : 'The K Hotel';
+        $hotelSub = isset($_POST['hotel_sub']) ? trim($_POST['hotel_sub']) : 'BAHRAIN';
 
         try {
             $pdo->beginTransaction();
@@ -521,6 +523,8 @@ switch ($action) {
             $stmt->execute(['departments', $deptsJson]);
             $stmt->execute(['redeemable_vouchers', $vouchersJson]);
             $stmt->execute(['gold_upgrade_threshold', $goldThreshold]);
+            $stmt->execute(['hotel_name', $hotelName]);
+            $stmt->execute(['hotel_sub', $hotelSub]);
 
             $pdo->commit();
             sendJSONResponse(true, null, "Settings saved successfully.");

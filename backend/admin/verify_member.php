@@ -200,6 +200,20 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_live_status') {
     }
 }
 
+// Fetch hotel name settings
+$hotelName = 'The K Hotel';
+$hotelSub = 'BAHRAIN';
+try {
+    $stmtSName = $pdo->query("SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('hotel_name', 'hotel_sub')");
+    $sRows = $stmtSName->fetchAll();
+    foreach ($sRows as $row) {
+        if ($row['setting_key'] === 'hotel_name') $hotelName = $row['setting_value'];
+        if ($row['setting_key'] === 'hotel_sub') $hotelSub = $row['setting_value'];
+    }
+} catch (PDOException $e) {
+    // defaults
+}
+
 $token = isset($_GET['token']) ? trim($_GET['token']) : '';
 $errorMsg = '';
 $member = null;
@@ -287,13 +301,13 @@ if ($member) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>K Hotel - Member Digital Pass</title>
+    <title><?php echo htmlspecialchars($hotelName); ?> - Member Digital Pass</title>
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#d97706">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="K Wallet">
+    <meta name="apple-mobile-web-app-title" content="<?php echo htmlspecialchars($hotelName); ?>">
     <link rel="apple-touch-icon" href="/backend/admin/pwa-icon-192.png">
     <link rel="manifest" href="/backend/admin/manifest.php?token=<?php echo urlencode($token ?? ''); ?>">
     <!-- End PWA -->
@@ -556,9 +570,9 @@ if ($member) {
     <div class="phone-container">
         <div class="header">
             <div class="logo-circle">
-                <span class="logo-text">K</span>
+                <span class="logo-text"><?php echo htmlspecialchars(strtoupper(substr(ltrim($hotelName, "Thet "), 0, 1) ?: 'H')); ?></span>
             </div>
-            <h2 class="brand-title">THE K HOTEL</h2>
+            <h2 class="brand-title"><?php echo htmlspecialchars(strtoupper($hotelName)); ?></h2>
         </div>
 
         <?php if ($errorMsg): ?>
@@ -580,8 +594,8 @@ if ($member) {
             <div class="loyalty-card">
                 <div class="card-header">
                     <div>
-                        <div class="hotel-name">THE K HOTEL</div>
-                        <div class="hotel-sub">BAHRAIN</div>
+                        <div class="hotel-name"><?php echo htmlspecialchars(strtoupper($hotelName)); ?></div>
+                        <div class="hotel-sub"><?php echo htmlspecialchars(strtoupper($hotelSub)); ?></div>
                     </div>
                     <div class="chip"></div>
                 </div>

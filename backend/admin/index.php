@@ -1,9 +1,33 @@
+<?php
+require_once __DIR__ . '/../config/db_connection.php';
+
+// Fetch settings
+$hotelName = 'The K Hotel';
+$hotelSub = 'BAHRAIN';
+
+try {
+    $stmtS = $pdo->query("SELECT setting_key, setting_value FROM settings");
+    $rows = $stmtS->fetchAll();
+    $settings = [];
+    foreach ($rows as $row) {
+        $settings[$row['setting_key']] = $row['setting_value'];
+    }
+    if (isset($settings['hotel_name'])) {
+        $hotelName = $settings['hotel_name'];
+    }
+    if (isset($settings['hotel_sub'])) {
+        $hotelSub = $settings['hotel_sub'];
+    }
+} catch (PDOException $e) {
+    // Fallback defaults
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>K Hotel Loyalty Program - Admin Control Center</title>
+    <title><?php echo htmlspecialchars($hotelName); ?> Loyalty Program - Admin Control Center</title>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- FontAwesome Icons -->
@@ -546,7 +570,7 @@
         <div class="sidebar-brand">
             <i class="fa-solid fa-hotel"></i>
             <div class="brand-text">
-                <h1>The K Hotel</h1>
+                <h1><?php echo htmlspecialchars($hotelName); ?></h1>
                 <span>Loyalty Admin Portal</span>
             </div>
         </div>
@@ -911,6 +935,14 @@
                         <div class="form-group">
                             <label>Gold Card Upgrade Threshold (<span class="currency-label">BHD</span>)</label>
                             <input type="number" step="0.001" name="gold_upgrade_threshold" id="settings-gold-threshold" required placeholder="500.000">
+                        </div>
+                        <div class="form-group">
+                            <label>Hotel Brand Name</label>
+                            <input type="text" name="hotel_name" id="settings-hotel-name" required placeholder="e.g. The K Hotel">
+                        </div>
+                        <div class="form-group">
+                            <label>Hotel Location / Sub-label</label>
+                            <input type="text" name="hotel_sub" id="settings-hotel-sub" required placeholder="e.g. BAHRAIN">
                         </div>
                     </div>
                 </div>
@@ -1302,6 +1334,7 @@
 
     <!-- AJAX Scripts -->
     <script>
+        const globalHotelName = <?php echo json_encode($hotelName); ?>;
         let currentCurrency = 'BHD';
 
         // Tab routing
@@ -1671,6 +1704,8 @@
                         $('#settings-timezone').val(settings.timezone || 'Asia/Bahrain');
                         $('#settings-currency').val(settings.currency || 'BHD');
                         $('#settings-gold-threshold').val(parseFloat(settings.gold_upgrade_threshold || 500.000).toFixed(3));
+                        $('#settings-hotel-name').val(settings.hotel_name || 'The K Hotel');
+                        $('#settings-hotel-sub').val(settings.hotel_sub || 'BAHRAIN');
                         
                         const currency = settings.currency || 'BHD';
                         updateGlobalCurrency(currency);
@@ -1778,7 +1813,7 @@
 
         function sendPassWhatsApp() {
             if (!currentPassUrl || !currentPassMobile) return;
-            const message = `Dear Valued Guest, here is your dynamic secure digital loyalty pass for The K Hotel: ${currentPassUrl}`;
+            const message = `Dear Valued Guest, here is your dynamic secure digital loyalty pass for ${globalHotelName}: ${currentPassUrl}`;
             const cleanMobile = currentPassMobile.replace(/[^0-9]/g, '');
             const waUrl = `https://wa.me/${cleanMobile}?text=${encodeURIComponent(message)}`;
             window.open(waUrl, '_blank');
@@ -2062,7 +2097,9 @@
                     gold_upgrade_threshold: $('#settings-gold-threshold').val(),
                     fb_points_rules: JSON.stringify(rules),
                     departments: JSON.stringify(globalDepartments),
-                    redeemable_vouchers: JSON.stringify(vouchers)
+                    redeemable_vouchers: JSON.stringify(vouchers),
+                    hotel_name: $('#settings-hotel-name').val(),
+                    hotel_sub: $('#settings-hotel-sub').val()
                 },
                 success: function(response) {
                     if (response.success) {

@@ -9,8 +9,10 @@ try {
     
     $stmt = $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
     $stmt->execute(['redeemable_vouchers', $vouchersJson]);
+    $stmt->execute(['hotel_name', 'The K Hotel']);
+    $stmt->execute(['hotel_sub', 'BAHRAIN']);
     
-    echo "Successfully updated redeemable vouchers settings in the database!<br>";
+    echo "Successfully updated redeemable vouchers, hotel_name, and hotel_sub settings in the database!<br>";
 } catch (Exception $e) {
     echo "Failed to update: " . $e->getMessage() . "<br>";
 }
