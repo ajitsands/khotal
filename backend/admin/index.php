@@ -835,6 +835,23 @@
                     </div>
                 </div>
 
+                <!-- Departments Settings -->
+                <div class="form-section">
+                    <div class="section-title"><i class="fa-solid fa-building"></i> Hotel Departments</div>
+                    <p style="color: var(--text-muted); margin-bottom: 15px; font-size: 14px;">
+                        Manage the list of hotel departments available for staff directory registration and tracking guest spending.
+                    </p>
+                    
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px; max-width: 500px;">
+                        <input type="text" id="new-dept-input" placeholder="e.g. Spa, Housekeeping, Kitchen" style="flex: 1; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-main);">
+                        <button type="button" class="btn" style="padding: 10px 16px;" onclick="addDepartmentFromInput()"><i class="fa-solid fa-plus"></i> Add Department</button>
+                    </div>
+                    
+                    <div id="departments-list-container" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+                        <!-- Departments badges will be populated here dynamically -->
+                    </div>
+                </div>
+
                 <!-- Point Rules settings -->
                 <div class="form-section">
                     <div class="section-title"><i class="fa-solid fa-star-half-stroke"></i> Service-Specific Point Incentives</div>
@@ -1471,28 +1488,16 @@
                             });
                         }
 
-                        // Re-populate source department dropdown in spending modal dynamically based on configured settings services
-                        let services = [];
-                        rules.forEach(r => {
-                            const srv = r.service || 'F&B';
-                            if (!services.includes(srv)) {
-                                services.push(srv);
-                            }
-                        });
-                        
-                        // Default fallbacks if rules list is somehow cleared
-                        if (services.length === 0) {
-                            services = ['F&B', 'Front Office'];
+                        // Populate departments
+                        try {
+                            globalDepartments = JSON.parse(settings.departments || '[]');
+                        } catch (e) {
+                            globalDepartments = [];
                         }
-                        
-                        let srvHtml = '';
-                        let deptHtml = '<option value="">-- Choose Department --</option>';
-                        services.forEach(srv => {
-                            srvHtml += `<option value="${srv}">${srv}</option>`;
-                            deptHtml += `<option value="${srv}">${srv}</option>`;
-                        });
-                        $('#spendingForm select[name="source_dept"]').html(srvHtml);
-                        $('#add-staff-department-select').html(deptHtml);
+                        if (globalDepartments.length === 0) {
+                            globalDepartments = ['F&B', 'Front Office', 'Spa'];
+                        }
+                        renderDepartmentsList();
                     }
                 }
             });
@@ -1751,7 +1756,8 @@
                 data: {
                     timezone: $('#settings-timezone').val(),
                     currency: $('#settings-currency').val(),
-                    fb_points_rules: JSON.stringify(rules)
+                    fb_points_rules: JSON.stringify(rules),
+                    departments: JSON.stringify(globalDepartments)
                 },
                 success: function(response) {
                     if (response.success) {
@@ -1801,6 +1807,51 @@
         
         function updateGlobalCurrency(currency) {
             $('.currency-label').text(currency);
+        }
+
+        let globalDepartments = [];
+
+        function renderDepartmentsList() {
+            let html = '';
+            globalDepartments.forEach((dept, index) => {
+                html += `
+                    <div class="dept-badge" style="display: inline-flex; align-items: center; background: var(--bg-color); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 20px; font-size: 13px; color: var(--text-main); font-weight: 500;">
+                        <span>${dept}</span>
+                        <button type="button" style="background: none; border: none; color: var(--danger); margin-left: 8px; cursor: pointer; font-size: 14px; padding: 0; line-height: 1;" onclick="removeDepartment(${index})"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                `;
+            });
+            if (globalDepartments.length === 0) {
+                html = '<p style="color: var(--text-muted); font-size: 13px;">No departments configured.</p>';
+            }
+            $('#departments-list-container').html(html);
+
+            // Re-populate dropdowns
+            let srvHtml = '';
+            let deptHtml = '<option value="">-- Choose Department --</option>';
+            globalDepartments.forEach(srv => {
+                srvHtml += `<option value="${srv}">${srv}</option>`;
+                deptHtml += `<option value="${srv}">${srv}</option>`;
+            });
+            $('#spendingForm select[name="source_dept"]').html(srvHtml);
+            $('#add-staff-department-select').html(deptHtml);
+        }
+
+        function addDepartmentFromInput() {
+            const val = $('#new-dept-input').val().trim();
+            if (val === '') return;
+            if (globalDepartments.includes(val)) {
+                showToast("Department already exists!", true);
+                return;
+            }
+            globalDepartments.push(val);
+            $('#new-dept-input').val('');
+            renderDepartmentsList();
+        }
+
+        function removeDepartment(index) {
+            globalDepartments.splice(index, 1);
+            renderDepartmentsList();
         }
 
         function refreshMembersOnly() {

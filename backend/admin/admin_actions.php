@@ -475,6 +475,7 @@ switch ($action) {
         $timezone = isset($_POST['timezone']) ? trim($_POST['timezone']) : 'Asia/Bahrain';
         $currency = isset($_POST['currency']) ? trim($_POST['currency']) : 'BHD';
         $rulesJson = isset($_POST['fb_points_rules']) ? trim($_POST['fb_points_rules']) : '[]';
+        $deptsJson = isset($_POST['departments']) ? trim($_POST['departments']) : '[]';
 
         try {
             $pdo->beginTransaction();
@@ -483,6 +484,7 @@ switch ($action) {
             $stmt->execute(['timezone', $timezone]);
             $stmt->execute(['currency', $currency]);
             $stmt->execute(['fb_points_rules', $rulesJson]);
+            $stmt->execute(['departments', $deptsJson]);
 
             $pdo->commit();
             sendJSONResponse(true, null, "Settings saved successfully.");

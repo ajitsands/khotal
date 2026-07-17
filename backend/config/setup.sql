@@ -1,5 +1,5 @@
-CREATE DATABASE IF NOT EXISTS privilagecard;
-USE privilagecard;
+-- CREATE DATABASE IF NOT EXISTS privilagecard;
+-- USE privilagecard;
 
 -- 1. Users / Members Table
 CREATE TABLE IF NOT EXISTS members (
@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS spending_records (
     id INT AUTO_INCREMENT PRIMARY KEY,
     member_id INT NOT NULL,
     amount DECIMAL(10, 3) NOT NULL,
-    source_dept ENUM('F&B', 'Front Office') NOT NULL,
+    source_dept VARCHAR(50) NOT NULL,
     description VARCHAR(255),
     transaction_date DATE NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
