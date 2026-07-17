@@ -1,5 +1,5 @@
 -- Update database schema to add Settings and Verification flags
-USE privilagecard;
+-- USE privilagecard;
 
 -- 1. Add verification timestamp to members
 ALTER TABLE members ADD COLUMN last_verified_at TIMESTAMP NULL AFTER expiry_date;
