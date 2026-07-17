@@ -10,6 +10,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- jQuery CDN -->
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <!-- DataTables CSS & JS CDN -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <style>
         :root {
             --bg-color: #f8fafc;
@@ -458,6 +461,82 @@
             word-break: break-all;
             display: none;
         }
+
+        /* DataTables Custom Theme Styling */
+        .dataTables_wrapper {
+            margin-top: 15px;
+            font-family: 'Outfit', sans-serif;
+        }
+        .dataTables_wrapper .dataTables_length, 
+        .dataTables_wrapper .dataTables_filter {
+            color: var(--text-main) !important;
+            margin-bottom: 15px;
+        }
+        .dataTables_wrapper .dataTables_length select,
+        .dataTables_wrapper .dataTables_filter input {
+            background-color: var(--card-bg) !important;
+            color: var(--text-main) !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 6px !important;
+            padding: 6px 12px !important;
+            font-size: 13px !important;
+            outline: none;
+        }
+        .dataTables_wrapper .dataTables_filter input {
+            width: 250px;
+            margin-left: 10px;
+        }
+        .dataTables_wrapper .dataTables_info {
+            color: var(--text-muted) !important;
+            font-size: 12px;
+            padding-top: 12px;
+        }
+        .dataTables_wrapper .dataTables_paginate {
+            padding-top: 12px;
+        }
+        .dataTables_wrapper .dataTables_paginate .paginate_button {
+            background: var(--bg-color) !important;
+            color: var(--text-muted) !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 4px !important;
+            padding: 5px 10px !important;
+            margin: 0 2px !important;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+        .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+            background: var(--primary) !important;
+            color: white !important;
+            border-color: var(--primary) !important;
+        }
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current,
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
+            background: var(--primary) !important;
+            color: white !important;
+            border-color: var(--primary) !important;
+            font-weight: bold;
+        }
+        table.dataTable {
+            border-collapse: collapse !important;
+            margin-top: 15px !important;
+            width: 100% !important;
+            border: 1px solid var(--border-color) !important;
+        }
+        table.dataTable thead th {
+            background-color: var(--table-header-bg) !important;
+            color: var(--text-main) !important;
+            font-weight: 600 !important;
+            border-bottom: 2px solid var(--border-color) !important;
+            padding: 12px 10px !important;
+        }
+        table.dataTable tbody td {
+            padding: 12px 10px !important;
+            border-bottom: 1px solid var(--border-color) !important;
+            color: var(--text-main) !important;
+        }
+        table.dataTable.no-footer {
+            border-bottom: 1px solid var(--border-color) !important;
+        }
     </style>
 </head>
 <body>
@@ -678,9 +757,6 @@
             <div class="form-section">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
                      <div class="section-title" style="margin-bottom:0; border-bottom:none; padding-bottom:0;"><i class="fa-solid fa-address-book"></i> Privileged Members</div>
-                    <div>
-                        <input type="text" id="member-search" placeholder="Search members by name/card..." style="padding: 8px 16px; font-size: 13px;">
-                    </div>
                 </div>
                 <!-- Card Number Prefix Legend -->
                 <div style="margin-bottom: 16px; padding: 8px 14px; background: rgba(251,191,36,0.05); border: 1px solid rgba(251,191,36,0.15); border-radius: 8px; font-size: 11px; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: center;">
@@ -691,7 +767,7 @@
                     <span><strong style="color: #64748b;">4600</strong> → K Reward Booker</span>
                 </div>
                 <div class="table-container">
-                    <table>
+                    <table id="membersTable" class="display" style="width: 100%;">
                         <thead>
                             <tr>
                                  <th>Card Number</th>
@@ -1282,6 +1358,7 @@
             $.ajax({
                 url: 'admin_actions.php?action=get_members',
                 type: 'GET',
+                cache: false,
                 success: function(response) {
                     if (response.success) {
                         const members = response.data;
@@ -1332,7 +1409,19 @@
 
                         $('#stat-kplus-count').text(kplus);
                         $('#stat-kreward-count').text(kreward);
+                        
+                        if ($.fn.DataTable.isDataTable('#membersTable')) {
+                            $('#membersTable').DataTable().destroy();
+                        }
                         $('#member-table-body').html(tableHtml);
+                        $('#membersTable').DataTable({
+                            "pageLength": 10,
+                            "ordering": true,
+                            "stateSave": true,
+                            "language": {
+                                "search": "Filter Members:"
+                            }
+                        });
                     }
                 }
             });
@@ -1881,9 +1970,17 @@
             const activePane = $('.view-pane.active-pane').attr('id');
             if (activePane !== 'view-members') return;
 
+            // Prevent background refresh if user is searching or modal is active
+            if ($.fn.DataTable.isDataTable('#membersTable')) {
+                if ($('#membersTable_filter input').is(':focus') || $('.modal:visible').length > 0) {
+                    return;
+                }
+            }
+
             $.ajax({
                 url: 'admin_actions.php?action=get_members',
                 type: 'GET',
+                cache: false,
                 success: function(response) {
                     if (response.success) {
                         const members = response.data;
@@ -1936,9 +2033,18 @@
                         $('#stat-kplus-count').text(kplus);
                         $('#stat-kreward-count').text(kreward);
                         
-                        if ($('#member-search').val() === '') {
-                            $('#member-table-body').html(tableHtml);
+                        if ($.fn.DataTable.isDataTable('#membersTable')) {
+                            $('#membersTable').DataTable().destroy();
                         }
+                        $('#member-table-body').html(tableHtml);
+                        $('#membersTable').DataTable({
+                            "pageLength": 10,
+                            "ordering": true,
+                            "stateSave": true,
+                            "language": {
+                                "search": "Filter Members:"
+                            }
+                        });
                     }
                 }
             });
@@ -1975,13 +2081,7 @@
             });
         });
 
-        // Member search filter
-        $('#member-search').on('keyup', function() {
-            const value = $(this).val().toLowerCase();
-            $('#member-table-body tr').filter(function() {
-                $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
-            });
-        });
+        // Search filter handled by DataTables automatically
 
         $(document).ready(function() {
             // Apply saved theme or default light
