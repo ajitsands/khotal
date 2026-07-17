@@ -1392,7 +1392,7 @@
                                     <td><strong style="color:var(--accent-gold);">${member.points_balance}</strong> Pts</td>
                                     <td><span class="badge ${member.card_type === 'Gold' ? 'badge-pending' : 'badge-active'}">${member.card_type}</span></td>
                                     <td><span class="badge ${badgeClass}">${member.status}</span></td>
-                                    <td>${member.expiry_date}</td>
+                                    <td>${formatDateToDMY(member.expiry_date)}</td>
                                     <td>
                                         ${spendBtn}
                                         ${redeemBtn}
@@ -2020,7 +2020,7 @@
                                     <td><strong style="color:var(--accent-gold);">${member.points_balance}</strong> Pts</td>
                                     <td><span class="badge ${member.card_type === 'Gold' ? 'badge-pending' : 'badge-active'}">${member.card_type}</span></td>
                                     <td><span class="badge ${badgeClass}">${member.status}</span></td>
-                                    <td>${member.expiry_date}</td>
+                                    <td>${formatDateToDMY(member.expiry_date)}</td>
                                     <td>
                                         ${spendBtn}
                                         ${redeemBtn}
@@ -2277,6 +2277,21 @@
                 return cleaned.match(/.{1,4}/g).join(' ');
             }
             return num;
+        }
+
+        function formatDateToDMY(dateStr) {
+            if (!dateStr) return 'N/A';
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            
+            const year = parts[0];
+            const monthIdx = parseInt(parts[1], 10) - 1;
+            const day = parts[2];
+            
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const monthName = months[monthIdx] || parts[1];
+            
+            return `${day}-${monthName}-${year}`;
         }
 
         function startMemberEdit(memberId) {
