@@ -171,12 +171,18 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_live_status') {
             $earnedRow = $stmtEarned->fetch();
             $earnedPoints = $earnedRow ? (int)$earnedRow['points_earned'] : 0;
         }
+        
+        // Fetch current member vouchers sorted by active first
+        $stmtV = $pdo->prepare("SELECT * FROM vouchers WHERE member_id = ? ORDER BY CASE WHEN status = 'Active' THEN 0 ELSE 1 END, issued_date DESC");
+        $stmtV->execute([$memberId]);
+        $liveVouchersList = $stmtV->fetchAll();
 
         header('Content-Type: application/json');
         echo json_encode([
             'success' => true,
             'balance' => $balance,
             'currency' => $currency,
+            'vouchers' => $liveVouchersList,
             'latest_spend' => $latestSpend ? [
                 'id' => $latestSpend['id'],
                 'amount' => (float)$latestSpend['amount'],
@@ -753,37 +759,39 @@ if ($member) {
             <!-- Vouchers Box -->
             <div class="section-box">
                 <div class="section-title">Vouchers Wallet</div>
-                <?php if (empty($vouchers)): ?>
-                    <p style="font-size: 12px; color: var(--text-muted); text-align: center; padding: 10px 0;">No vouchers in wallet.</p>
-                <?php else: ?>
-                    <?php foreach ($vouchers as $voucher): 
-                        $isActive = $voucher['status'] === 'Active';
-                        $isUsed = $voucher['status'] === 'Used';
-                        $isExpired = $voucher['status'] === 'Expired';
-                        
-                        $opacity = $isActive ? '1' : '0.5';
-                        $badgeStyle = 'background: var(--primary); color: #fff;';
-                        if ($isUsed) {
-                            $badgeStyle = 'background: #4b5563; color: #d1d5db;';
-                        } else if ($isExpired) {
-                            $badgeStyle = 'background: #dc2626; color: #ffffff;';
-                        }
-                    ?>
-                        <div class="voucher-stub" style="opacity: <?php echo $opacity; ?>; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; margin-bottom: 10px;">
-                            <div>
-                                <div class="voucher-desc" style="font-size: 13px; font-weight: 700; color: #fff;"><?php echo htmlspecialchars($voucher['description']); ?></div>
-                                <div class="voucher-expiry" style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">
-                                    <?php if ($isUsed): ?>
-                                        Used: <?php echo $voucher['used_at']; ?>
-                                    <?php else: ?>
-                                        Exp: <?php echo $voucher['valid_until']; ?>
-                                    <?php endif; ?>
+                <div id="vouchers-wallet-list">
+                    <?php if (empty($vouchers)): ?>
+                        <p style="font-size: 12px; color: var(--text-muted); text-align: center; padding: 10px 0;">No vouchers in wallet.</p>
+                    <?php else: ?>
+                        <?php foreach ($vouchers as $voucher): 
+                            $isActive = $voucher['status'] === 'Active';
+                            $isUsed = $voucher['status'] === 'Used';
+                            $isExpired = $voucher['status'] === 'Expired';
+                            
+                            $opacity = $isActive ? '1' : '0.5';
+                            $badgeStyle = 'background: var(--primary); color: #fff;';
+                            if ($isUsed) {
+                                $badgeStyle = 'background: #4b5563; color: #d1d5db;';
+                            } else if ($isExpired) {
+                                $badgeStyle = 'background: #dc2626; color: #ffffff;';
+                            }
+                        ?>
+                            <div class="voucher-stub" style="opacity: <?php echo $opacity; ?>; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; margin-bottom: 10px;">
+                                <div>
+                                    <div class="voucher-desc" style="font-size: 13px; font-weight: 700; color: #fff;"><?php echo htmlspecialchars($voucher['description']); ?></div>
+                                    <div class="voucher-expiry" style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">
+                                        <?php if ($isUsed): ?>
+                                            Used: <?php echo $voucher['used_at']; ?>
+                                        <?php else: ?>
+                                            Exp: <?php echo $voucher['valid_until']; ?>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
+                                <span class="voucher-badge" style="padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; <?php echo $badgeStyle; ?>"><?php echo htmlspecialchars($voucher['status']); ?></span>
                             </div>
-                            <span class="voucher-badge" style="padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; <?php echo $badgeStyle; ?>"><?php echo htmlspecialchars($voucher['status']); ?></span>
-                        </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
             </div>
 
             <?php if ($member['membership_type'] === 'K Reward'): ?>
@@ -961,6 +969,50 @@ if ($member) {
                         }
                         if ($('#live-points-card-val').length > 0) {
                             $('#live-points-card-val').text(response.balance);
+                        }
+
+                        // Re-render Vouchers Wallet list dynamically
+                        if (response.vouchers && $('#vouchers-wallet-list').length > 0) {
+                            let vHtml = '';
+                            if (response.vouchers.length === 0) {
+                                vHtml = '<p style="font-size: 12px; color: var(--text-muted); text-align: center; padding: 10px 0;">No vouchers in wallet.</p>';
+                            } else {
+                                response.vouchers.forEach(v => {
+                                    const isActive = v.status === 'Active';
+                                    const isUsed = v.status === 'Used';
+                                    const isExpired = v.status === 'Expired';
+                                    
+                                    const opacity = isActive ? '1' : '0.5';
+                                    let badgeStyle = 'background: var(--primary); color: #fff;';
+                                    if (isUsed) {
+                                        badgeStyle = 'background: #4b5563; color: #d1d5db;';
+                                    } else if (isExpired) {
+                                        badgeStyle = 'background: #dc2626; color: #ffffff;';
+                                    }
+                                    
+                                    const safeDesc = (v.description || '')
+                                        .replace(/&/g, "&amp;")
+                                        .replace(/</g, "&lt;")
+                                        .replace(/>/g, "&gt;")
+                                        .replace(/"/g, "&quot;")
+                                        .replace(/'/g, "&#039;");
+                                        
+                                    const dateLabel = isUsed ? `Used: ${v.used_at || 'N/A'}` : `Exp: ${v.valid_until}`;
+                                    
+                                    vHtml += `
+                                        <div class="voucher-stub" style="opacity: ${opacity}; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; margin-bottom: 10px;">
+                                            <div>
+                                                <div class="voucher-desc" style="font-size: 13px; font-weight: 700; color: #fff;">${safeDesc}</div>
+                                                <div class="voucher-expiry" style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">
+                                                    ${dateLabel}
+                                                </div>
+                                            </div>
+                                            <span class="voucher-badge" style="padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; ${badgeStyle}">${v.status.toUpperCase()}</span>
+                                        </div>
+                                    `;
+                                });
+                            }
+                            $('#vouchers-wallet-list').html(vHtml);
                         }
                         
                         // Check if new spend record was logged
