@@ -47,8 +47,8 @@ if (empty($repoDir) || !is_dir($repoDir)) {
 $output = [];
 $returnVar = 0;
 
-// Run git pull. We redirect stderr to stdout to capture everything.
-exec("cd " . escapeshellarg($repoDir) . " && git pull 2>&1", $output, $returnVar);
+// Run git fetch and reset. We redirect stderr to stdout to capture everything.
+exec("cd " . escapeshellarg($repoDir) . " && git fetch origin main 2>&1 && git reset --hard origin/main 2>&1", $output, $returnVar);
 
 // Log result
 $logMessage = "[" . date('Y-m-d H:i:s') . "] Sync Attempt:\n";

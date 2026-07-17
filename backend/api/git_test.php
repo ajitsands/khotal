@@ -22,10 +22,10 @@ exec("cd " . escapeshellarg($repoDir) . " && git status 2>&1", $outputStatus, $r
 echo "Exit code: " . $returnStatus . "\n";
 echo "Output:\n" . implode("\n", $outputStatus) . "\n";
 
-echo "\n--- 2. Testing 'git pull origin main' ---\n";
+echo "\n--- 2. Testing 'git fetch & reset' ---\n";
 $outputPull = [];
 $returnPull = 0;
-exec("cd " . escapeshellarg($repoDir) . " && git pull origin main 2>&1", $outputPull, $returnPull);
+exec("cd " . escapeshellarg($repoDir) . " && git fetch origin main 2>&1 && git reset --hard origin/main 2>&1", $outputPull, $returnPull);
 echo "Exit code: " . $returnPull . "\n";
 echo "Output:\n" . implode("\n", $outputPull) . "\n";
 ?>
