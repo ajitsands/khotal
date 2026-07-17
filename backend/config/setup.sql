@@ -41,7 +41,18 @@ CREATE TABLE IF NOT EXISTS staff_incentives (
     FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE
 );
 
--- 3. Vouchers Table (vouchers issued to members)
+-- 3. Staff Directory Table (to track authorized staff members and incentive percentages)
+CREATE TABLE IF NOT EXISTS staff_directory (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    staff_id VARCHAR(30) UNIQUE NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    department VARCHAR(50) NOT NULL,
+    incentive_pct DECIMAL(5, 2) DEFAULT 0.00,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- 4. Vouchers Table (vouchers issued to members)
 CREATE TABLE IF NOT EXISTS vouchers (
     id INT AUTO_INCREMENT PRIMARY KEY,
     member_id INT NOT NULL,
@@ -61,7 +72,7 @@ CREATE TABLE IF NOT EXISTS vouchers (
     FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE
 );
 
--- 4. Points Ledger Table (for K Reward bookers)
+-- 5. Points Ledger Table (for K Reward bookers)
 CREATE TABLE IF NOT EXISTS points_ledger (
     id INT AUTO_INCREMENT PRIMARY KEY,
     member_id INT NOT NULL,
@@ -77,7 +88,7 @@ CREATE TABLE IF NOT EXISTS points_ledger (
     FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE
 );
 
--- 5. Spending Records Table (for tracking and upgrading members to K Plus Gold)
+-- 6. Spending Records Table (for tracking and upgrading members to K Plus Gold)
 CREATE TABLE IF NOT EXISTS spending_records (
     id INT AUTO_INCREMENT PRIMARY KEY,
     member_id INT NOT NULL,
@@ -89,7 +100,7 @@ CREATE TABLE IF NOT EXISTS spending_records (
     FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE
 );
 
--- 6. Redemption Requests Table (for K Reward point redemptions)
+-- 7. Redemption Requests Table (for K Reward point redemptions)
 CREATE TABLE IF NOT EXISTS redemption_requests (
     id INT AUTO_INCREMENT PRIMARY KEY,
     member_id INT NOT NULL,

@@ -22,3 +22,14 @@ ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value);
 
 -- 4. Alter source_dept from ENUM to VARCHAR in spending_records
 ALTER TABLE spending_records MODIFY COLUMN source_dept VARCHAR(50) NOT NULL;
+
+-- 5. Create staff_directory table
+CREATE TABLE IF NOT EXISTS staff_directory (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    staff_id VARCHAR(30) UNIQUE NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    department VARCHAR(50) NOT NULL,
+    incentive_pct DECIMAL(5, 2) DEFAULT 0.00,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
