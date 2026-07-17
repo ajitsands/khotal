@@ -31,8 +31,8 @@ $action = isset($_GET['action']) ? $_GET['action'] : '';
 switch ($action) {
     case 'my_vouchers':
         try {
-            // Fetch vouchers for the logged-in member
-            $stmt = $pdo->prepare("SELECT * FROM vouchers WHERE member_id = ? ORDER BY issued_date DESC");
+            // Fetch vouchers for the logged-in member, sorted with Active first
+            $stmt = $pdo->prepare("SELECT * FROM vouchers WHERE member_id = ? ORDER BY CASE WHEN status = 'Active' THEN 0 ELSE 1 END, issued_date DESC");
             $stmt->execute([$memberId]);
             $vouchers = $stmt->fetchAll();
 

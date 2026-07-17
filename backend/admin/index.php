@@ -932,6 +932,22 @@
                     </div>
                 </div>
 
+                <!-- Redeemable Vouchers Settings -->
+                <div class="form-section">
+                    <div class="section-title"><i class="fa-solid fa-ticket"></i> Redeemable Vouchers Settings</div>
+                    <p style="color: var(--text-muted); margin-bottom: 15px; font-size: 14px;">
+                        Manage the list of vouchers that members can redeem their points for. Configure the Points Cost, Category, and Description for each.
+                    </p>
+                    
+                    <div id="vouchers-settings-container">
+                        <!-- Voucher rows will be loaded dynamically -->
+                    </div>
+                    
+                    <div style="margin-top: 15px;">
+                        <button type="button" class="btn btn-secondary" onclick="addVoucherRow()"><i class="fa-solid fa-plus"></i> Add Voucher Option</button>
+                    </div>
+                </div>
+
                 <!-- Point Rules settings -->
                 <div class="form-section">
                     <div class="section-title"><i class="fa-solid fa-star-half-stroke"></i> Service-Specific Point Incentives</div>
@@ -1045,6 +1061,7 @@
             <div style="display:flex; border-bottom:1px solid var(--border-color); margin-bottom: 15px; gap: 5px;">
                 <button class="btn btn-secondary" id="modal-tab-spend" onclick="switchModalTab('spend')" style="border-bottom: 2px solid var(--primary); border-radius:0; padding:8px 16px;">Spend Logs</button>
                 <button class="btn btn-secondary" id="modal-tab-points" onclick="switchModalTab('points')" style="border-bottom: 2px solid transparent; border-radius:0; padding:8px 16px;">Points Ledger</button>
+                <button class="btn btn-secondary" id="modal-tab-vouchers" onclick="switchModalTab('vouchers')" style="border-bottom: 2px solid transparent; border-radius:0; padding:8px 16px;">Vouchers Wallet</button>
             </div>
 
             <!-- Spending List Content -->
@@ -1085,6 +1102,27 @@
                 </div>
             </div>
 
+            <!-- Vouchers Wallet Content -->
+            <div id="modal-content-vouchers" style="max-height: 250px; overflow-y: auto; display: none;">
+                <div class="table-container" style="margin-top:0;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Voucher No</th>
+                                <th>Type</th>
+                                <th>Description</th>
+                                <th>Validity / Expiry</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modal-vouchers-table-body">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <div style="display:flex; justify-content:flex-end; margin-top:20px;">
                 <button class="btn" onclick="$('#memberDetailsModal').css('display', 'none')">Close</button>
             </div>
@@ -1106,12 +1144,29 @@
                     <input type="text" id="redeem-available-balance" readonly style="background-color: var(--border-color); font-weight: 700; color: var(--accent-gold);">
                 </div>
                 <div class="form-group" style="margin-bottom:15px;">
-                    <label>Points to Redeem *</label>
-                    <input type="number" step="1" name="points" id="redeem-points-input" required placeholder="Enter points amount">
+                    <label>Select Voucher to Redeem *</label>
+                    <select name="description" id="redeem-voucher-select" onchange="onRedeemVoucherSelect(this.value)" required>
+                        <option value="">-- Choose Voucher --</option>
+                    </select>
                 </div>
-                <div class="form-group" style="margin-bottom:20px;">
-                    <label>Redemption Description / Reference *</label>
-                    <input type="text" name="description" required placeholder="e.g. Free Buffet Meal, 1 Night Stay">
+                <div class="form-group" style="margin-bottom:15px;">
+                    <label>Points Cost</label>
+                    <input type="number" name="points" id="redeem-points-input" readonly style="background-color: var(--border-color); font-weight: 700; color: var(--accent-gold);" required placeholder="0">
+                </div>
+                <div class="form-group" style="margin-bottom:15px;">
+                    <label>Validity / Expiry *</label>
+                    <select name="validity_option" id="redeem-validity-select" onchange="onRedeemValidityChange(this.value)" required>
+                        <option value="1 Month">1 Month</option>
+                        <option value="2 Month">2 Month</option>
+                        <option value="3 Month">3 Month</option>
+                        <option value="6 Month">6 Month</option>
+                        <option value="1 Year" selected>1 Year</option>
+                        <option value="Custom Date">Custom Expiry Date</option>
+                    </select>
+                </div>
+                <div class="form-group" id="redeem-custom-date-group" style="margin-bottom:20px; display:none;">
+                    <label>Custom Expiry Date *</label>
+                    <input type="date" name="custom_date" id="redeem-custom-date-input">
                 </div>
                 <div style="display:flex; justify-content:flex-end; gap:10px;">
                     <button type="button" class="btn btn-secondary" onclick="$('#redeemPointsModal').css('display', 'none')">Cancel</button>
@@ -1120,6 +1175,48 @@
             </form>
         </div>
     </div>
+
+    <!-- Approve Redemption Request Modal -->
+    <div id="approveRedemptionModal" class="modal">
+        <div class="modal-content" style="width: 450px; max-width: 90%;">
+            <h3 style="color: var(--accent-gold); margin-bottom: 20px;"><i class="fa-solid fa-clipboard-check"></i> Approve Points Redemption</h3>
+            <form id="approveRedemptionForm">
+                <input type="hidden" name="request_id" id="approve-request-id">
+                <div class="form-group" style="margin-bottom:15px;">
+                    <label>Guest Name</label>
+                    <input type="text" id="approve-guest-name" readonly style="background-color: var(--border-color);">
+                </div>
+                <div class="form-group" style="margin-bottom:15px;">
+                    <label>Award Claimed</label>
+                    <input type="text" id="approve-award-title" readonly style="background-color: var(--border-color); font-weight: 700;">
+                </div>
+                <div class="form-group" style="margin-bottom:15px;">
+                    <label>Points Cost</label>
+                    <input type="text" id="approve-points-cost" readonly style="background-color: var(--border-color); font-weight: 700; color: var(--accent-gold);">
+                </div>
+                <div class="form-group" style="margin-bottom:15px;">
+                    <label>Validity / Expiry *</label>
+                    <select name="validity_option" id="approve-validity-select" onchange="onApproveValidityChange(this.value)" required>
+                        <option value="1 Month">1 Month</option>
+                        <option value="2 Month">2 Month</option>
+                        <option value="3 Month">3 Month</option>
+                        <option value="6 Month">6 Month</option>
+                        <option value="1 Year" selected>1 Year</option>
+                        <option value="Custom Date">Custom Expiry Date</option>
+                    </select>
+                </div>
+                <div class="form-group" id="approve-custom-date-group" style="margin-bottom:20px; display:none;">
+                    <label>Custom Expiry Date *</label>
+                    <input type="date" name="custom_date" id="approve-custom-date-input">
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:10px;">
+                    <button type="button" class="btn btn-secondary" onclick="$('#approveRedemptionModal').css('display', 'none')">Cancel</button>
+                    <button type="submit" class="btn" style="background:var(--success);">Confirm Approval</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Manage Staff Directory Modal -->
     <div id="staffDirectoryModal" class="modal">
         <div class="modal-content" style="width: 950px; max-width: 95%;">
@@ -1597,6 +1694,24 @@
                             globalDepartments = ['F&B', 'Front Office', 'Spa'];
                         }
                         renderDepartmentsList();
+
+                        // Populate redeemable vouchers
+                        $('#vouchers-settings-container').empty();
+                        let settingsVouchers = [];
+                        try {
+                            settingsVouchers = JSON.parse(settings.redeemable_vouchers || '[]');
+                        } catch (e) {
+                            settingsVouchers = [];
+                        }
+                        
+                        globalVouchers = settingsVouchers;
+                        if (globalVouchers.length === 0) {
+                            addVoucherRow('', '', '', 'meals', '');
+                        } else {
+                            globalVouchers.forEach(v => {
+                                addVoucherRow(v.id || '', v.name || '', v.points || '', v.category || 'meals', v.description || '');
+                            });
+                        }
                     }
                 }
             });
@@ -1712,6 +1827,32 @@
                             });
                         }
                         $('#modal-points-table-body').html(pointsHtml);
+
+                        // Render Vouchers Table
+                        let vouchersHtml = '';
+                        if (!data.vouchers || data.vouchers.length === 0) {
+                            vouchersHtml = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">No vouchers issued.</td></tr>';
+                        } else {
+                            data.vouchers.forEach(row => {
+                                const isActive = row.status === 'Active';
+                                const badgeClass = isActive ? 'badge-active' : (row.status === 'Used' ? 'badge-pending' : 'badge-expired');
+                                const useBtn = isActive ? 
+                                    `<button class="btn" style="padding:4px 8px; font-size:11px; background:var(--primary); color:#0b0f19; font-weight:700;" onclick="markVoucherAsUsed(${row.id}, ${id})"><i class="fa-solid fa-check-double"></i> Mark as Used</button>` :
+                                    `<span style="color:var(--text-muted); font-size:11px;">N/A</span>`;
+                                
+                                vouchersHtml += `
+                                    <tr>
+                                        <td><strong style="color:var(--accent-gold); font-family:monospace;">${row.voucher_number}</strong></td>
+                                        <td><span class="badge badge-active" style="background-color:rgba(251,191,36,0.1); color:var(--accent-gold); font-size:10px;">${row.voucher_type}</span></td>
+                                        <td>${row.description || 'N/A'}</td>
+                                        <td>${row.valid_until}</td>
+                                        <td><span class="badge ${badgeClass}">${row.status.toUpperCase()}</span></td>
+                                        <td>${useBtn}</td>
+                                    </tr>
+                                `;
+                            });
+                        }
+                        $('#modal-vouchers-table-body').html(vouchersHtml);
                         
                         // Show modal
                         $('#memberDetailsModal').css('display', 'flex');
@@ -1721,16 +1862,25 @@
         }
 
         function switchModalTab(tab) {
+            // Reset borders
+            $('#modal-tab-spend').css('border-bottom-color', 'transparent');
+            $('#modal-tab-points').css('border-bottom-color', 'transparent');
+            $('#modal-tab-vouchers').css('border-bottom-color', 'transparent');
+            
+            // Hide panels
+            $('#modal-content-spend').hide();
+            $('#modal-content-points').hide();
+            $('#modal-content-vouchers').hide();
+            
             if (tab === 'spend') {
                 $('#modal-tab-spend').css('border-bottom-color', 'var(--primary)');
-                $('#modal-tab-points').css('border-bottom-color', 'transparent');
                 $('#modal-content-spend').show();
-                $('#modal-content-points').hide();
-            } else {
-                $('#modal-tab-spend').css('border-bottom-color', 'transparent');
+            } else if (tab === 'points') {
                 $('#modal-tab-points').css('border-bottom-color', 'var(--primary)');
-                $('#modal-content-spend').hide();
                 $('#modal-content-points').show();
+            } else if (tab === 'vouchers') {
+                $('#modal-tab-vouchers').css('border-bottom-color', 'var(--primary)');
+                $('#modal-content-vouchers').show();
             }
         }
 
@@ -1766,22 +1916,44 @@
 
         // Process Redemption request
         function processRedemption(id, status) {
-            $.ajax({
-                url: 'admin_actions.php?action=approve_redemption',
-                type: 'POST',
-                data: { request_id: id, status: status },
-                success: function(response) {
-                    if (response.success) {
-                        showToast(response.message);
-                        loadAllData();
-                    } else {
-                        showToast(response.message, true);
+            if (status === 'Rejected') {
+                if (!confirm("Are you sure you want to REJECT this redemption request?")) return;
+                
+                $.ajax({
+                    url: 'admin_actions.php?action=approve_redemption',
+                    type: 'POST',
+                    data: { request_id: id, status: 'Rejected' },
+                    success: function(response) {
+                        if (response.success) {
+                            showToast(response.message);
+                            loadAllData();
+                        } else {
+                            showToast(response.message, true);
+                        }
+                    },
+                    error: function(xhr) {
+                        showToast(xhr.responseJSON?.message || "Failed to process redemption", true);
                     }
-                },
-                error: function(xhr) {
-                    showToast(xhr.responseJSON?.message || "Failed to process redemption", true);
-                }
-            });
+                });
+            } else if (status === 'Approved') {
+                // Find redemption details from the table row
+                const row = $(`#redemptions-table-body td:contains(#${id})`).closest('tr');
+                const guestName = row.find('td:nth-child(3)').text();
+                const awardClaimed = row.find('td:nth-child(4)').text();
+                const pointsCost = row.find('td:nth-child(5)').text();
+                
+                $('#approve-request-id').val(id);
+                $('#approve-guest-name').val(guestName);
+                $('#approve-award-title').val(awardClaimed);
+                $('#approve-points-cost').val(pointsCost);
+                
+                // Reset validity dropdown
+                $('#approve-validity-select').val('1 Year');
+                $('#approve-custom-date-group').hide();
+                $('#approve-custom-date-input').val('').prop('required', false);
+                
+                $('#approveRedemptionModal').css('display', 'flex');
+            }
         }
 
         // Encryption tester API trigger
@@ -1850,6 +2022,23 @@
                 }
             });
 
+            const vouchers = [];
+            $('.voucher-rule-row').each(function() {
+                const name = $(this).find('.voucher-name').val();
+                const points = $(this).find('.voucher-points').val();
+                const category = $(this).find('.voucher-category').val();
+                const description = $(this).find('.voucher-desc').val();
+                if (name && points && category) {
+                    vouchers.push({
+                        id: 'vch-' + Math.floor(Math.random() * 1000000),
+                        name: name,
+                        points: parseInt(points),
+                        category: category,
+                        description: description
+                    });
+                }
+            });
+
             $.ajax({
                 url: 'admin_actions.php?action=save_settings',
                 type: 'POST',
@@ -1858,7 +2047,8 @@
                     currency: $('#settings-currency').val(),
                     gold_upgrade_threshold: $('#settings-gold-threshold').val(),
                     fb_points_rules: JSON.stringify(rules),
-                    departments: JSON.stringify(globalDepartments)
+                    departments: JSON.stringify(globalDepartments),
+                    redeemable_vouchers: JSON.stringify(vouchers)
                 },
                 success: function(response) {
                     if (response.success) {
@@ -1919,6 +2109,151 @@
             currentCurrency = currency;
             $('.currency-label').text(currency);
         }
+
+        let globalVouchers = [];
+
+        function addVoucherRow(id = '', name = '', points = '', category = 'meals', description = '') {
+            const rowId = 'voucher-rule-row-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+            
+            const cats = [
+                { val: 'meals', text: '🍽️ Meals' },
+                { val: 'fitness', text: '💪 Fitness' },
+                { val: 'gift', text: '🎁 Gifts' },
+                { val: 'nights', text: '🏨 Nights' }
+            ];
+            
+            let catOptions = '';
+            cats.forEach(c => {
+                const selected = c.val === category ? 'selected' : '';
+                catOptions += `<option value="${c.val}" ${selected}>${c.text}</option>`;
+            });
+
+            const rowHtml = `
+                <div class="form-grid voucher-rule-row" id="${rowId}" style="grid-template-columns: 1.5fr 1fr 1.2fr 2fr auto; align-items: flex-end; margin-bottom: 12px; gap: 15px;">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label>Voucher Name</label>
+                        <input type="text" class="voucher-name" required value="${name}" placeholder="e.g. Dinner for two">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label>Points Cost</label>
+                        <input type="number" step="1" class="voucher-points" required value="${points}" placeholder="Points">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label>Category</label>
+                        <select class="voucher-category" required style="width: 100%; padding: 8px 10px; font-size:12px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-main);">
+                            ${catOptions}
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label>Voucher Description</label>
+                        <input type="text" class="voucher-desc" required value="${description}" placeholder="e.g. Dinner Buffet for two at KOLORS">
+                    </div>
+                    <div style="padding-bottom: 2px;">
+                        <button type="button" class="btn btn-secondary" style="color:var(--danger); border-color:var(--danger); background:rgba(239,68,68,0.05); padding: 8px 12px;" onclick="$('#${rowId}').remove()"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+            `;
+            $('#vouchers-settings-container').append(rowHtml);
+        }
+
+        function populateRedemptionVouchersDropdown(availablePoints) {
+            const select = $('#redeem-voucher-select');
+            select.empty();
+            select.append('<option value="">-- Choose Voucher --</option>');
+            
+            let count = 0;
+            globalVouchers.forEach(v => {
+                if (v.points <= availablePoints) {
+                    select.append(`<option value="${v.name}" data-points="${v.points}">${v.name} (${v.points} Pts)</option>`);
+                    count++;
+                }
+            });
+            
+            if (count === 0) {
+                select.append('<option value="" disabled style="color:var(--danger);">No affordable vouchers (insufficient points)</option>');
+            }
+            
+            $('#redeem-points-input').val('0');
+        }
+        
+        function onRedeemVoucherSelect(val) {
+            const selectedOpt = $('#redeem-voucher-select option:selected');
+            const points = selectedOpt.data('points') || 0;
+            $('#redeem-points-input').val(points);
+        }
+
+        function onRedeemValidityChange(val) {
+            if (val === 'Custom Date') {
+                $('#redeem-custom-date-group').show();
+                $('#redeem-custom-date-input').prop('required', true);
+            } else {
+                $('#redeem-custom-date-group').hide();
+                $('#redeem-custom-date-input').prop('required', false);
+            }
+        }
+
+        function onApproveValidityChange(val) {
+            if (val === 'Custom Date') {
+                $('#approve-custom-date-group').show();
+                $('#approve-custom-date-input').prop('required', true);
+            } else {
+                $('#approve-custom-date-group').hide();
+                $('#approve-custom-date-input').prop('required', false);
+            }
+        }
+
+        function markVoucherAsUsed(voucherId, memberId) {
+            if (!confirm("Are you sure you want to mark this voucher as USED? This action cannot be undone.")) return;
+            
+            $.ajax({
+                url: 'admin_actions.php?action=use_voucher',
+                type: 'POST',
+                data: { voucher_id: voucherId },
+                success: function(response) {
+                    if (response.success) {
+                        showToast(response.message);
+                        
+                        // Extract subtitles to refresh modal dynamically
+                        const subtitleText = $('#details-modal-subtitle').text();
+                        const match = subtitleText.match(/Guest:\s*([^\(]+)\(([^)]+)\)\s*\|\s*Program:\s*(.*)/);
+                        const name = match ? match[1].trim() : '';
+                        const cardNum = match ? match[2].trim() : '';
+                        const program = match ? match[3].trim() : '';
+                        
+                        viewMemberDetails(memberId, name, cardNum, program);
+                        loadAllData();
+                    } else {
+                        showToast(response.message, true);
+                    }
+                },
+                error: function() {
+                    showToast("Error updating voucher status", true);
+                }
+            });
+        }
+
+        // Approve Redemption Submit
+        $('#approveRedemptionForm').on('submit', function(e) {
+            e.preventDefault();
+            
+            $.ajax({
+                url: 'admin_actions.php?action=approve_redemption',
+                type: 'POST',
+                data: $(this).serialize() + '&status=Approved',
+                success: function(response) {
+                    if (response.success) {
+                        showToast(response.message);
+                        $('#approveRedemptionModal').css('display', 'none');
+                        loadAllData();
+                    } else {
+                        showToast(response.message, true);
+                    }
+                },
+                error: function(xhr) {
+                    showToast(xhr.responseJSON?.message || "Failed to approve redemption", true);
+                }
+            });
+        });
 
         let globalDepartments = [];
 

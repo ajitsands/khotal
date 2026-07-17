@@ -220,10 +220,16 @@ if (empty($token)) {
             } else if ($member['status'] === 'Expired' || $member['status'] === 'Inactive') {
                 $errorMsg = "This loyalty card is currently " . strtolower($member['status']) . ".";
             } else {
-                // Fetch active vouchers
-                $stmtV = $pdo->prepare("SELECT * FROM vouchers WHERE member_id = ? AND status = 'Active'");
+                // Fetch vouchers sorted by status = 'Active' first, then newest issued date
+                $stmtV = $pdo->prepare("SELECT * FROM vouchers WHERE member_id = ? ORDER BY CASE WHEN status = 'Active' THEN 0 ELSE 1 END, issued_date DESC");
                 $stmtV->execute([$memberId]);
                 $vouchers = $stmtV->fetchAll();
+
+                // Fetch dynamic redeemable vouchers catalogue
+                $stmtS = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_key = 'redeemable_vouchers'");
+                $stmtS->execute();
+                $redeemableVouchersRow = $stmtS->fetch();
+                $vouchersList = $redeemableVouchersRow ? json_decode($redeemableVouchersRow['setting_value'], true) : [];
             }
         } catch (PDOException $e) {
             $errorMsg = "Database error: " . $e->getMessage();
@@ -746,17 +752,35 @@ if ($member) {
 
             <!-- Vouchers Box -->
             <div class="section-box">
-                <div class="section-title">Active Vouchers Wallet</div>
+                <div class="section-title">Vouchers Wallet</div>
                 <?php if (empty($vouchers)): ?>
-                    <p style="font-size: 12px; color: var(--text-muted); text-align: center; padding: 10px 0;">No active vouchers in wallet.</p>
+                    <p style="font-size: 12px; color: var(--text-muted); text-align: center; padding: 10px 0;">No vouchers in wallet.</p>
                 <?php else: ?>
-                    <?php foreach ($vouchers as $voucher): ?>
-                        <div class="voucher-stub">
+                    <?php foreach ($vouchers as $voucher): 
+                        $isActive = $voucher['status'] === 'Active';
+                        $isUsed = $voucher['status'] === 'Used';
+                        $isExpired = $voucher['status'] === 'Expired';
+                        
+                        $opacity = $isActive ? '1' : '0.5';
+                        $badgeStyle = 'background: var(--primary); color: #fff;';
+                        if ($isUsed) {
+                            $badgeStyle = 'background: #4b5563; color: #d1d5db;';
+                        } else if ($isExpired) {
+                            $badgeStyle = 'background: #dc2626; color: #ffffff;';
+                        }
+                    ?>
+                        <div class="voucher-stub" style="opacity: <?php echo $opacity; ?>; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; margin-bottom: 10px;">
                             <div>
-                                <div class="voucher-desc"><?php echo $voucher['description']; ?></div>
-                                <div class="voucher-expiry">Exp: <?php echo $voucher['valid_until']; ?></div>
+                                <div class="voucher-desc" style="font-size: 13px; font-weight: 700; color: #fff;"><?php echo htmlspecialchars($voucher['description']); ?></div>
+                                <div class="voucher-expiry" style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">
+                                    <?php if ($isUsed): ?>
+                                        Used: <?php echo $voucher['used_at']; ?>
+                                    <?php else: ?>
+                                        Exp: <?php echo $voucher['valid_until']; ?>
+                                    <?php endif; ?>
+                                </div>
                             </div>
-                            <span class="voucher-badge">ACTIVE</span>
+                            <span class="voucher-badge" style="padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; <?php echo $badgeStyle; ?>"><?php echo htmlspecialchars($voucher['status']); ?></span>
                         </div>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -778,146 +802,101 @@ if ($member) {
                     <button type="button" class="cat-tab" onclick="showRewardCategory('nights', this)" style="background: transparent; color: var(--text-muted); border: 1px solid transparent; border-radius: 12px; padding: 6px 12px; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap; outline: none; transition: all 0.2s ease;">🏨 Nights</button>
                 </div>
 
+                <?php
+                $mealsVouchers = [];
+                $fitnessVouchers = [];
+                $giftVouchers = [];
+                $nightsVouchers = [];
+
+                if (is_array($vouchersList)) {
+                    foreach ($vouchersList as $v) {
+                        $cat = isset($v['category']) ? $v['category'] : '';
+                        if ($cat === 'meals') {
+                            $mealsVouchers[] = $v;
+                        } else if ($cat === 'fitness') {
+                            $fitnessVouchers[] = $v;
+                        } else if ($cat === 'gift') {
+                            $giftVouchers[] = $v;
+                        } else if ($cat === 'nights') {
+                            $nightsVouchers[] = $v;
+                        }
+                    }
+                }
+                ?>
+
                 <!-- Meals Section -->
                 <div class="reward-cat-panel" id="panel-meals" style="display: block;">
                     <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-                            <div style="flex: 1; padding-right: 10px;">
-                                <div style="font-size: 12.5px; font-weight: 700; color: #fff;">Lunch for two at KOLORS</div>
-                                <div style="font-size: 10.5px; color: var(--accent-gold); font-weight: 800; margin-top: 3px;">15 POINTS</div>
-                            </div>
-                            <button type="button" onclick="requestRedeem('Lunch for two at KOLORS Restaurant', 15)" style="background: var(--primary); border: none; color: #0b0f19; font-weight: 800; font-size: 11.5px; padding: 7px 16px; border-radius: 8px; cursor: pointer; transition: transform 0.15s ease;">Claim</button>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-                            <div style="flex: 1; padding-right: 10px;">
-                                <div style="font-size: 12.5px; font-weight: 700; color: #fff;">Dinner for two at KOLORS</div>
-                                <div style="font-size: 10.5px; color: var(--accent-gold); font-weight: 800; margin-top: 3px;">20 POINTS</div>
-                            </div>
-                            <button type="button" onclick="requestRedeem('Dinner for two at KOLORS Restaurant', 20)" style="background: var(--primary); border: none; color: #0b0f19; font-weight: 800; font-size: 11.5px; padding: 7px 16px; border-radius: 8px; cursor: pointer; transition: transform 0.15s ease;">Claim</button>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-                            <div style="flex: 1; padding-right: 10px;">
-                                <div style="font-size: 12.5px; font-weight: 700; color: #fff;">Lunch/Dinner for two at K Lounge</div>
-                                <div style="font-size: 10.5px; color: var(--accent-gold); font-weight: 800; margin-top: 3px;">35 POINTS</div>
-                            </div>
-                            <button type="button" onclick="requestRedeem('Lunch or Dinner for two at the K Lounge', 35)" style="background: var(--primary); border: none; color: #0b0f19; font-weight: 800; font-size: 11.5px; padding: 7px 16px; border-radius: 8px; cursor: pointer; transition: transform 0.15s ease;">Claim</button>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-                            <div style="flex: 1; padding-right: 10px;">
-                                <div style="font-size: 12.5px; font-weight: 700; color: #fff;">Friday Brunch for two at KOLORS</div>
-                                <div style="font-size: 10.5px; color: var(--accent-gold); font-weight: 800; margin-top: 3px;">50 POINTS</div>
-                            </div>
-                            <button type="button" onclick="requestRedeem('Friday Brunch for two at KOLORS Restaurant', 50)" style="background: var(--primary); border: none; color: #0b0f19; font-weight: 800; font-size: 11.5px; padding: 7px 16px; border-radius: 8px; cursor: pointer; transition: transform 0.15s ease;">Claim</button>
-                        </div>
+                        <?php if (empty($mealsVouchers)): ?>
+                            <div style="text-align: center; color: var(--text-muted); font-size: 12px; padding: 10px;">No awards available in this category.</div>
+                        <?php else: ?>
+                            <?php foreach ($mealsVouchers as $v): ?>
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="flex: 1; padding-right: 10px;">
+                                        <div style="font-size: 12.5px; font-weight: 700; color: #fff;"><?php echo htmlspecialchars($v['name']); ?></div>
+                                        <div style="font-size: 10.5px; color: var(--accent-gold); font-weight: 800; margin-top: 3px;"><?php echo (int)$v['points']; ?> POINTS</div>
+                                    </div>
+                                    <button type="button" onclick="requestRedeem('<?php echo addslashes($v['name']); ?>', <?php echo (int)$v['points']; ?>)" style="background: var(--primary); border: none; color: #0b0f19; font-weight: 800; font-size: 11.5px; padding: 7px 16px; border-radius: 8px; cursor: pointer; transition: transform 0.15s ease;">Claim</button>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </div>
                 </div>
 
                 <!-- Fitness Section -->
                 <div class="reward-cat-panel" id="panel-fitness" style="display: none;">
                     <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-                            <div style="flex: 1; padding-right: 10px;">
-                                <div style="font-size: 12.5px; font-weight: 700; color: #fff;">1 Month health club (single)</div>
-                                <div style="font-size: 10.5px; color: var(--accent-gold); font-weight: 800; margin-top: 3px;">30 POINTS</div>
-                            </div>
-                            <button type="button" onclick="requestRedeem('1 Month health club membership (single)', 30)" style="background: var(--primary); border: none; color: #0b0f19; font-weight: 800; font-size: 11.5px; padding: 7px 16px; border-radius: 8px; cursor: pointer; transition: transform 0.15s ease;">Claim</button>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-                            <div style="flex: 1; padding-right: 10px;">
-                                <div style="font-size: 12.5px; font-weight: 700; color: #fff;">1 Month health club (couple)</div>
-                                <div style="font-size: 10.5px; color: var(--accent-gold); font-weight: 800; margin-top: 3px;">50 POINTS</div>
-                            </div>
-                            <button type="button" onclick="requestRedeem('1 Month health club membership (couple)', 50)" style="background: var(--primary); border: none; color: #0b0f19; font-weight: 800; font-size: 11.5px; padding: 7px 16px; border-radius: 8px; cursor: pointer; transition: transform 0.15s ease;">Claim</button>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-                            <div style="flex: 1; padding-right: 10px;">
-                                <div style="font-size: 12.5px; font-weight: 700; color: #fff;">3 Month health club (single)</div>
-                                <div style="font-size: 10.5px; color: var(--accent-gold); font-weight: 800; margin-top: 3px;">100 POINTS</div>
-                            </div>
-                            <button type="button" onclick="requestRedeem('3 Month health club membership (single)', 100)" style="background: var(--primary); border: none; color: #0b0f19; font-weight: 800; font-size: 11.5px; padding: 7px 16px; border-radius: 8px; cursor: pointer; transition: transform 0.15s ease;">Claim</button>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-                            <div style="flex: 1; padding-right: 10px;">
-                                <div style="font-size: 12.5px; font-weight: 700; color: #fff;">3 Month health club (couple)</div>
-                                <div style="font-size: 10.5px; color: var(--accent-gold); font-weight: 800; margin-top: 3px;">150 POINTS</div>
-                            </div>
-                            <button type="button" onclick="requestRedeem('3 Month health club membership (couple)', 150)" style="background: var(--primary); border: none; color: #0b0f19; font-weight: 800; font-size: 11.5px; padding: 7px 16px; border-radius: 8px; cursor: pointer; transition: transform 0.15s ease;">Claim</button>
-                        </div>
+                        <?php if (empty($fitnessVouchers)): ?>
+                            <div style="text-align: center; color: var(--text-muted); font-size: 12px; padding: 10px;">No awards available in this category.</div>
+                        <?php else: ?>
+                            <?php foreach ($fitnessVouchers as $v): ?>
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="flex: 1; padding-right: 10px;">
+                                        <div style="font-size: 12.5px; font-weight: 700; color: #fff;"><?php echo htmlspecialchars($v['name']); ?></div>
+                                        <div style="font-size: 10.5px; color: var(--accent-gold); font-weight: 800; margin-top: 3px;"><?php echo (int)$v['points']; ?> POINTS</div>
+                                    </div>
+                                    <button type="button" onclick="requestRedeem('<?php echo addslashes($v['name']); ?>', <?php echo (int)$v['points']; ?>)" style="background: var(--primary); border: none; color: #0b0f19; font-weight: 800; font-size: 11.5px; padding: 7px 16px; border-radius: 8px; cursor: pointer; transition: transform 0.15s ease;">Claim</button>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </div>
                 </div>
 
                 <!-- Gift Section -->
                 <div class="reward-cat-panel" id="panel-gift" style="display: none;">
                     <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-                            <div style="flex: 1; padding-right: 10px;">
-                                <div style="font-size: 12.5px; font-weight: 700; color: #fff;">20.000 BHD gift voucher</div>
-                                <div style="font-size: 10.5px; color: var(--accent-gold); font-weight: 800; margin-top: 3px;">20 POINTS</div>
-                            </div>
-                            <button type="button" onclick="requestRedeem('20.000 BHD gift voucher', 20)" style="background: var(--primary); border: none; color: #0b0f19; font-weight: 800; font-size: 11.5px; padding: 7px 16px; border-radius: 8px; cursor: pointer; transition: transform 0.15s ease;">Claim</button>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-                            <div style="flex: 1; padding-right: 10px;">
-                                <div style="font-size: 12.5px; font-weight: 700; color: #fff;">50.000 BHD gift voucher</div>
-                                <div style="font-size: 10.5px; color: var(--accent-gold); font-weight: 800; margin-top: 3px;">50 POINTS</div>
-                            </div>
-                            <button type="button" onclick="requestRedeem('50.000 BHD gift voucher', 50)" style="background: var(--primary); border: none; color: #0b0f19; font-weight: 800; font-size: 11.5px; padding: 7px 16px; border-radius: 8px; cursor: pointer; transition: transform 0.15s ease;">Claim</button>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-                            <div style="flex: 1; padding-right: 10px;">
-                                <div style="font-size: 12.5px; font-weight: 700; color: #fff;">75.000 BHD gift voucher</div>
-                                <div style="font-size: 10.5px; color: var(--accent-gold); font-weight: 800; margin-top: 3px;">75 POINTS</div>
-                            </div>
-                            <button type="button" onclick="requestRedeem('75.000 BHD gift voucher', 75)" style="background: var(--primary); border: none; color: #0b0f19; font-weight: 800; font-size: 11.5px; padding: 7px 16px; border-radius: 8px; cursor: pointer; transition: transform 0.15s ease;">Claim</button>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-                            <div style="flex: 1; padding-right: 10px;">
-                                <div style="font-size: 12.5px; font-weight: 700; color: #fff;">100.000 BHD gift voucher</div>
-                                <div style="font-size: 10.5px; color: var(--accent-gold); font-weight: 800; margin-top: 3px;">100 POINTS</div>
-                            </div>
-                            <button type="button" onclick="requestRedeem('100.000 BHD gift voucher', 100)" style="background: var(--primary); border: none; color: #0b0f19; font-weight: 800; font-size: 11.5px; padding: 7px 16px; border-radius: 8px; cursor: pointer; transition: transform 0.15s ease;">Claim</button>
-                        </div>
+                        <?php if (empty($giftVouchers)): ?>
+                            <div style="text-align: center; color: var(--text-muted); font-size: 12px; padding: 10px;">No awards available in this category.</div>
+                        <?php else: ?>
+                            <?php foreach ($giftVouchers as $v): ?>
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="flex: 1; padding-right: 10px;">
+                                        <div style="font-size: 12.5px; font-weight: 700; color: #fff;"><?php echo htmlspecialchars($v['name']); ?></div>
+                                        <div style="font-size: 10.5px; color: var(--accent-gold); font-weight: 800; margin-top: 3px;"><?php echo (int)$v['points']; ?> POINTS</div>
+                                    </div>
+                                    <button type="button" onclick="requestRedeem('<?php echo addslashes($v['name']); ?>', <?php echo (int)$v['points']; ?>)" style="background: var(--primary); border: none; color: #0b0f19; font-weight: 800; font-size: 11.5px; padding: 7px 16px; border-radius: 8px; cursor: pointer; transition: transform 0.15s ease;">Claim</button>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </div>
                 </div>
 
                 <!-- Nights Section -->
                 <div class="reward-cat-panel" id="panel-nights" style="display: none;">
                     <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-                            <div style="flex: 1; padding-right: 10px;">
-                                <div style="font-size: 12.5px; font-weight: 700; color: #fff;">One night in deluxe room</div>
-                                <div style="font-size: 10.5px; color: var(--accent-gold); font-weight: 800; margin-top: 3px;">50 POINTS</div>
-                            </div>
-                            <button type="button" onclick="requestRedeem('One night in a deluxe room', 50)" style="background: var(--primary); border: none; color: #0b0f19; font-weight: 800; font-size: 11.5px; padding: 7px 16px; border-radius: 8px; cursor: pointer; transition: transform 0.15s ease;">Claim</button>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-                            <div style="flex: 1; padding-right: 10px;">
-                                <div style="font-size: 12.5px; font-weight: 700; color: #fff;">One night in a Junior Suite</div>
-                                <div style="font-size: 10.5px; color: var(--accent-gold); font-weight: 800; margin-top: 3px;">75 POINTS</div>
-                            </div>
-                            <button type="button" onclick="requestRedeem('One night in a Junior Suite', 75)" style="background: var(--primary); border: none; color: #0b0f19; font-weight: 800; font-size: 11.5px; padding: 7px 16px; border-radius: 8px; cursor: pointer; transition: transform 0.15s ease;">Claim</button>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-                            <div style="flex: 1; padding-right: 10px;">
-                                <div style="font-size: 12.5px; font-weight: 700; color: #fff;">One night in a Senior Suite</div>
-                                <div style="font-size: 10.5px; color: var(--accent-gold); font-weight: 800; margin-top: 3px;">100 POINTS</div>
-                            </div>
-                            <button type="button" onclick="requestRedeem('One night in a Senior Suite', 100)" style="background: var(--primary); border: none; color: #0b0f19; font-weight: 800; font-size: 11.5px; padding: 7px 16px; border-radius: 8px; cursor: pointer; transition: transform 0.15s ease;">Claim</button>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-                            <div style="flex: 1; padding-right: 10px;">
-                                <div style="font-size: 12.5px; font-weight: 700; color: #fff;">One night in Amiri Suite</div>
-                                <div style="font-size: 10.5px; color: var(--accent-gold); font-weight: 800; margin-top: 3px;">150 POINTS</div>
-                            </div>
-                            <button type="button" onclick="requestRedeem('One night in the Amiri Suite', 150)" style="background: var(--primary); border: none; color: #0b0f19; font-weight: 800; font-size: 11.5px; padding: 7px 16px; border-radius: 8px; cursor: pointer; transition: transform 0.15s ease;">Claim</button>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-                            <div style="flex: 1; padding-right: 10px;">
-                                <div style="font-size: 12.5px; font-weight: 700; color: #fff;">One night in Royal Suite</div>
-                                <div style="font-size: 10.5px; color: var(--accent-gold); font-weight: 800; margin-top: 3px;">250 POINTS</div>
-                            </div>
-                            <button type="button" onclick="requestRedeem('One night in the Royal Suite', 250)" style="background: var(--primary); border: none; color: #0b0f19; font-weight: 800; font-size: 11.5px; padding: 7px 16px; border-radius: 8px; cursor: pointer; transition: transform 0.15s ease;">Claim</button>
-                        </div>
+                        <?php if (empty($nightsVouchers)): ?>
+                            <div style="text-align: center; color: var(--text-muted); font-size: 12px; padding: 10px;">No awards available in this category.</div>
+                        <?php else: ?>
+                            <?php foreach ($nightsVouchers as $v): ?>
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="flex: 1; padding-right: 10px;">
+                                        <div style="font-size: 12.5px; font-weight: 700; color: #fff;"><?php echo htmlspecialchars($v['name']); ?></div>
+                                        <div style="font-size: 10.5px; color: var(--accent-gold); font-weight: 800; margin-top: 3px;"><?php echo (int)$v['points']; ?> POINTS</div>
+                                    </div>
+                                    <button type="button" onclick="requestRedeem('<?php echo addslashes($v['name']); ?>', <?php echo (int)$v['points']; ?>)" style="background: var(--primary); border: none; color: #0b0f19; font-weight: 800; font-size: 11.5px; padding: 7px 16px; border-radius: 8px; cursor: pointer; transition: transform 0.15s ease;">Claim</button>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

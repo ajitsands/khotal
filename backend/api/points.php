@@ -28,30 +28,24 @@ if (!$decoded || !isset($decoded['member_id']) || $decoded['expiry'] < time()) {
 $memberId = $decoded['member_id'];
 $action = isset($_GET['action']) ? $_GET['action'] : '';
 
-// Awards Point Cost Mapping
-$awardsCatalogue = [
-    // Meals
-    'Lunch for two at KOLORS Restaurant' => 15,
-    'Dinner for two at KOLORS Restaurant' => 20,
-    'Lunch or Dinner for two at the K Lounge' => 35,
-    'Friday Brunch for two at KOLORS Restaurant' => 50,
-    // Fitness
-    '1 Month health club membership (single)' => 30,
-    '1 Month health club membership (couple)' => 50,
-    '3 Month health club membership (single)' => 100,
-    '3 Month health club membership (couple)' => 150,
-    // Shopping
-    '20.000 BHD gift voucher' => 20,
-    '50.000 BHD gift voucher' => 50,
-    '75.000 BHD gift voucher' => 75,
-    '100.000 BHD gift voucher' => 100,
-    // Free Nights
-    'One night in a deluxe room' => 50,
-    'One night in a Junior Suite' => 75,
-    'One night in a Senior Suite' => 100,
-    'One night in the Amiri Suite' => 150,
-    'One night in the Royal Suite' => 250,
-];
+// Load dynamic catalogue from database settings
+try {
+    $stmtS = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_key = 'redeemable_vouchers'");
+    $stmtS->execute();
+    $redeemableVouchersRow = $stmtS->fetch();
+    $vouchersList = $redeemableVouchersRow ? json_decode($redeemableVouchersRow['setting_value'], true) : [];
+} catch (PDOException $e) {
+    $vouchersList = [];
+}
+
+$awardsCatalogue = [];
+if (is_array($vouchersList)) {
+    foreach ($vouchersList as $v) {
+        if (isset($v['name']) && isset($v['points'])) {
+            $awardsCatalogue[$v['name']] = (int)$v['points'];
+        }
+    }
+}
 
 switch ($action) {
     case 'balance':

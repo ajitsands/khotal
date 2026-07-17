@@ -353,6 +353,8 @@ switch ($action) {
     case 'approve_redemption':
         $requestId = isset($_POST['request_id']) ? (int)$_POST['request_id'] : 0;
         $status = isset($_POST['status']) ? $_POST['status'] : 'Approved'; // Approved or Rejected
+        $validityOption = isset($_POST['validity_option']) ? $_POST['validity_option'] : '1 Year';
+        $customDate = isset($_POST['custom_date']) ? $_POST['custom_date'] : '';
 
         if ($requestId <= 0) {
             sendJSONResponse(false, null, "Invalid request ID.", 400);
@@ -385,6 +387,22 @@ switch ($action) {
             $pointsCost = $request['points_cost'];
             $awardTitle = $request['award_title'];
 
+            // Determine validity expiry date
+            $expiryDate = date('Y-m-d', strtotime('+1 year')); // default
+            if ($validityOption === '1 Month') {
+                $expiryDate = date('Y-m-d', strtotime('+1 month'));
+            } else if ($validityOption === '2 Month') {
+                $expiryDate = date('Y-m-d', strtotime('+2 months'));
+            } else if ($validityOption === '3 Month') {
+                $expiryDate = date('Y-m-d', strtotime('+3 months'));
+            } else if ($validityOption === '6 Month') {
+                $expiryDate = date('Y-m-d', strtotime('+6 months'));
+            } else if ($validityOption === '1 Year') {
+                $expiryDate = date('Y-m-d', strtotime('+1 year'));
+            } else if ($validityOption === 'Custom Date' && !empty($customDate)) {
+                $expiryDate = date('Y-m-d', strtotime($customDate));
+            }
+
             // 1. Add debit record to points ledger
             $stmtP = $pdo->prepare("INSERT INTO points_ledger (member_id, booking_reference, points_earned, points_redeemed, transaction_type, source, description, transaction_date) VALUES (?, ?, 0, ?, 'Redeemed', 'Voucher Redemption', ?, CURRENT_DATE)");
             $stmtP->execute([
@@ -394,19 +412,26 @@ switch ($action) {
                 "Redeemed points for award: " . $awardTitle
             ]);
 
-            // 2. Map award title to voucher type
+            // 2. Map award title to voucher type using dynamic settings list
+            $stmtVch = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_key = 'redeemable_vouchers'");
+            $stmtVch->execute();
+            $vchRow = $stmtVch->fetch();
+            $redeemableList = $vchRow ? json_decode($vchRow['setting_value'], true) : [];
+            
             $vType = 'K Reward Meal';
-            if (strpos($awardTitle, 'health club') !== false) {
-                $vType = 'K Reward Fitness';
-            } else if (strpos($awardTitle, 'gift voucher') !== false) {
-                $vType = 'K Reward Gift';
-            } else if (strpos($awardTitle, 'night') !== false) {
-                $vType = 'K Reward Free Night';
+            foreach ($redeemableList as $vch) {
+                if ($vch['name'] === $awardTitle) {
+                    $cat = $vch['category'];
+                    if ($cat === 'meals') $vType = 'K Reward Meal';
+                    else if ($cat === 'fitness') $vType = 'K Reward Fitness';
+                    else if ($cat === 'gift') $vType = 'K Reward Gift';
+                    else if ($cat === 'nights') $vType = 'K Reward Free Night';
+                    break;
+                }
             }
 
             // 3. Issue Voucher
             $voucherNumber = 'VCH-' . mt_rand(100000, 999999);
-            $expiryDate = date('Y-m-d', strtotime('+1 year'));
 
             $stmtV = $pdo->prepare("INSERT INTO vouchers (
                 member_id, voucher_number, voucher_type, description, status, issued_date, valid_until
@@ -483,6 +508,7 @@ switch ($action) {
         $currency = isset($_POST['currency']) ? trim($_POST['currency']) : 'BHD';
         $rulesJson = isset($_POST['fb_points_rules']) ? trim($_POST['fb_points_rules']) : '[]';
         $deptsJson = isset($_POST['departments']) ? trim($_POST['departments']) : '[]';
+        $vouchersJson = isset($_POST['redeemable_vouchers']) ? trim($_POST['redeemable_vouchers']) : '[]';
         $goldThreshold = isset($_POST['gold_upgrade_threshold']) ? (float)$_POST['gold_upgrade_threshold'] : 500.000;
 
         try {
@@ -493,6 +519,7 @@ switch ($action) {
             $stmt->execute(['currency', $currency]);
             $stmt->execute(['fb_points_rules', $rulesJson]);
             $stmt->execute(['departments', $deptsJson]);
+            $stmt->execute(['redeemable_vouchers', $vouchersJson]);
             $stmt->execute(['gold_upgrade_threshold', $goldThreshold]);
 
             $pdo->commit();
@@ -507,6 +534,8 @@ switch ($action) {
         $memberId = isset($_POST['member_id']) ? (int)$_POST['member_id'] : 0;
         $points = isset($_POST['points']) ? (int)$_POST['points'] : 0;
         $desc = isset($_POST['description']) ? trim($_POST['description']) : '';
+        $validityOption = isset($_POST['validity_option']) ? $_POST['validity_option'] : '1 Year';
+        $customDate = isset($_POST['custom_date']) ? $_POST['custom_date'] : '';
 
         if ($memberId <= 0 || $points <= 0 || empty($desc)) {
             sendJSONResponse(false, null, "All fields are required.", 400);
@@ -525,17 +554,70 @@ switch ($action) {
                 sendJSONResponse(false, null, "Insufficient points balance (Available: {$currentBal} Pts).", 400);
             }
 
+            // Determine validity expiry date
+            $expiryDate = date('Y-m-d', strtotime('+1 year')); // default
+            if ($validityOption === '1 Month') {
+                $expiryDate = date('Y-m-d', strtotime('+1 month'));
+            } else if ($validityOption === '2 Month') {
+                $expiryDate = date('Y-m-d', strtotime('+2 months'));
+            } else if ($validityOption === '3 Month') {
+                $expiryDate = date('Y-m-d', strtotime('+3 months'));
+            } else if ($validityOption === '6 Month') {
+                $expiryDate = date('Y-m-d', strtotime('+6 months'));
+            } else if ($validityOption === '1 Year') {
+                $expiryDate = date('Y-m-d', strtotime('+1 year'));
+            } else if ($validityOption === 'Custom Date' && !empty($customDate)) {
+                $expiryDate = date('Y-m-d', strtotime($customDate));
+            }
+
+            $pdo->beginTransaction();
+
             // Debit points
             $stmtDebit = $pdo->prepare("INSERT INTO points_ledger (member_id, booking_reference, points_redeemed, transaction_type, source, description, transaction_date) VALUES (?, ?, ?, 'Redeemed', 'Manual Adjustment', ?, CURRENT_DATE)");
             $stmtDebit->execute([
                 $memberId,
                 'RD-' . mt_rand(1000, 9999),
                 $points,
-                $desc
+                "Redeemed points for award: " . $desc
             ]);
 
-            sendJSONResponse(true, null, "Redeemed {$points} points successfully.");
+            // Map voucher category to voucher type
+            $stmtVch = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_key = 'redeemable_vouchers'");
+            $stmtVch->execute();
+            $vchRow = $stmtVch->fetch();
+            $redeemableList = $vchRow ? json_decode($vchRow['setting_value'], true) : [];
+            
+            $vType = 'K Reward Meal';
+            foreach ($redeemableList as $vch) {
+                if ($vch['name'] === $desc) {
+                    $cat = $vch['category'];
+                    if ($cat === 'meals') $vType = 'K Reward Meal';
+                    else if ($cat === 'fitness') $vType = 'K Reward Fitness';
+                    else if ($cat === 'gift') $vType = 'K Reward Gift';
+                    else if ($cat === 'nights') $vType = 'K Reward Free Night';
+                    break;
+                }
+            }
+
+            // Create active voucher in database
+            $voucherNumber = 'VCH-' . mt_rand(100000, 999999);
+            $stmtV = $pdo->prepare("INSERT INTO vouchers (
+                member_id, voucher_number, voucher_type, description, status, issued_date, valid_until
+            ) VALUES (?, ?, ?, ?, 'Active', CURRENT_DATE, ?)");
+            $stmtV->execute([
+                $memberId,
+                $voucherNumber,
+                $vType,
+                $desc,
+                $expiryDate
+            ]);
+
+            $pdo->commit();
+            sendJSONResponse(true, ['voucher_number' => $voucherNumber], "Redeemed {$points} points successfully. Voucher {$voucherNumber} generated.");
         } catch (PDOException $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             sendJSONResponse(false, null, $e->getMessage(), 500);
         }
         break;
@@ -659,6 +741,11 @@ switch ($action) {
             $stmtPoints->execute([$memberId]);
             $points = $stmtPoints->fetchAll();
 
+            // Fetch vouchers sorted by Active status first, then newest issued date
+            $stmtVouchers = $pdo->prepare("SELECT * FROM vouchers WHERE member_id = ? ORDER BY CASE WHEN status = 'Active' THEN 0 ELSE 1 END, issued_date DESC");
+            $stmtVouchers->execute([$memberId]);
+            $vouchers = $stmtVouchers->fetchAll();
+
             // Fetch total metrics
             $stmtTotals = $pdo->prepare("SELECT 
                 (SELECT COALESCE(SUM(amount), 0) FROM spending_records WHERE member_id = ?) as total_spent,
@@ -670,9 +757,28 @@ switch ($action) {
             sendJSONResponse(true, [
                 'spending' => $spending,
                 'points' => $points,
+                'vouchers' => $vouchers,
                 'totals' => $totals
             ], "Member spending details retrieved.");
 
+        } catch (PDOException $e) {
+            sendJSONResponse(false, null, $e->getMessage(), 500);
+        }
+        break;
+
+    case 'use_voucher':
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            sendJSONResponse(false, null, "Method not allowed.", 405);
+        }
+        $voucherId = isset($_POST['voucher_id']) ? (int)$_POST['voucher_id'] : 0;
+        if ($voucherId <= 0) {
+            sendJSONResponse(false, null, "Invalid voucher ID.", 400);
+        }
+
+        try {
+            $stmt = $pdo->prepare("UPDATE vouchers SET status = 'Used', used_at = CURRENT_TIMESTAMP WHERE id = ?");
+            $stmt->execute([$voucherId]);
+            sendJSONResponse(true, null, "Voucher marked as used successfully.");
         } catch (PDOException $e) {
             sendJSONResponse(false, null, $e->getMessage(), 500);
         }
