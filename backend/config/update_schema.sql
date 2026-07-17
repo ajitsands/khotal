@@ -33,3 +33,7 @@ CREATE TABLE IF NOT EXISTS staff_directory (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+-- 6. Add spending_id column and foreign key constraint to staff_incentives table
+ALTER TABLE staff_incentives ADD COLUMN spending_id INT NULL AFTER member_id;
+ALTER TABLE staff_incentives ADD CONSTRAINT fk_staff_incentives_spending FOREIGN KEY (spending_id) REFERENCES spending_records(id) ON DELETE CASCADE;

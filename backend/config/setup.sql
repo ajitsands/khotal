@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS staff_incentives (
     staff_name VARCHAR(100) NOT NULL,
     department VARCHAR(50) NOT NULL,
     member_id INT NOT NULL, -- The K Plus member registered
+    spending_id INT NULL, -- The spending record if incentive is from spending
     incentive_amount DECIMAL(10, 3) DEFAULT 5.000, -- 5.000 BHD for Silver
     status ENUM('Pending', 'Approved', 'Paid') DEFAULT 'Pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -121,6 +122,9 @@ CREATE INDEX idx_members_email ON members(email);
 CREATE INDEX idx_vouchers_member ON vouchers(member_id);
 CREATE INDEX idx_points_member ON points_ledger(member_id);
 CREATE INDEX idx_spending_member ON spending_records(member_id);
+
+-- Foreign key constraints added after table creation to avoid order issues
+ALTER TABLE staff_incentives ADD CONSTRAINT fk_staff_incentives_spending FOREIGN KEY (spending_id) REFERENCES spending_records(id) ON DELETE CASCADE;
 
 -- Insert dummy admin user into members (with admin credentials, password: 'password123')
 -- Admin can use the same members table or we can login as admin using a config-defined user.

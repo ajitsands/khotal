@@ -1339,8 +1339,8 @@
                         showToast(response.message, true);
                     }
                 },
-                error: function() {
-                    showToast("Error recording spending", true);
+                error: function(xhr) {
+                    showToast(xhr.responseJSON?.message || "Error recording spending", true);
                 }
             });
         });
