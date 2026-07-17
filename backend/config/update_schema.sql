@@ -20,7 +20,8 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('departments', '["F&B", "Front Office", "Spa"]'),
 ('gold_upgrade_threshold', '500.000'),
 ('hotel_name', 'The K Hotel'),
-('hotel_sub', 'BAHRAIN')
+('hotel_sub', 'BAHRAIN'),
+('hotel_logo', '')
 ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value);
 
 -- 3b. Seed default redeemable vouchers in settings

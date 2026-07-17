@@ -512,6 +512,32 @@ switch ($action) {
         $goldThreshold = isset($_POST['gold_upgrade_threshold']) ? (float)$_POST['gold_upgrade_threshold'] : 500.000;
         $hotelName = isset($_POST['hotel_name']) ? trim($_POST['hotel_name']) : 'The K Hotel';
         $hotelSub = isset($_POST['hotel_sub']) ? trim($_POST['hotel_sub']) : 'BAHRAIN';
+        $hotelLogo = isset($_POST['hotel_logo']) ? trim($_POST['hotel_logo']) : '';
+
+        // Handle File Upload for Hotel Logo
+        if (isset($_FILES['logo_file']) && $_FILES['logo_file']['error'] === UPLOAD_ERR_OK) {
+            $fileTmpPath = $_FILES['logo_file']['tmp_name'];
+            $fileName = $_FILES['logo_file']['name'];
+            $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+            
+            $allowedExtensions = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'];
+            if (in_array($fileExtension, $allowedExtensions)) {
+                $uploadFileDir = __DIR__ . '/../uploads/';
+                if (!is_dir($uploadFileDir)) {
+                    mkdir($uploadFileDir, 0755, true);
+                }
+                
+                // Save with unique name to bypass browser cache
+                $newFileName = 'logo_' . time() . '.' . $fileExtension;
+                $dest_path = $uploadFileDir . $newFileName;
+                
+                if (move_uploaded_file($fileTmpPath, $dest_path)) {
+                    $hotelLogo = '/backend/uploads/' . $newFileName;
+                }
+            } else {
+                sendJSONResponse(false, null, "Invalid file format. Allowed formats: PNG, JPG, JPEG, GIF, SVG, WEBP.", 400);
+            }
+        }
 
         try {
             $pdo->beginTransaction();
@@ -525,6 +551,7 @@ switch ($action) {
             $stmt->execute(['gold_upgrade_threshold', $goldThreshold]);
             $stmt->execute(['hotel_name', $hotelName]);
             $stmt->execute(['hotel_sub', $hotelSub]);
+            $stmt->execute(['hotel_logo', $hotelLogo]);
 
             $pdo->commit();
             sendJSONResponse(true, null, "Settings saved successfully.");

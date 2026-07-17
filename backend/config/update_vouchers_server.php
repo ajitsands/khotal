@@ -11,8 +11,9 @@ try {
     $stmt->execute(['redeemable_vouchers', $vouchersJson]);
     $stmt->execute(['hotel_name', 'The K Hotel']);
     $stmt->execute(['hotel_sub', 'BAHRAIN']);
+    $stmt->execute(['hotel_logo', '']);
     
-    echo "Successfully updated redeemable vouchers, hotel_name, and hotel_sub settings in the database!<br>";
+    echo "Successfully updated redeemable vouchers, hotel_name, hotel_sub, and hotel_logo settings in the database!<br>";
 } catch (Exception $e) {
     echo "Failed to update: " . $e->getMessage() . "<br>";
 }

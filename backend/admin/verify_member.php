@@ -203,12 +203,14 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_live_status') {
 // Fetch hotel name settings
 $hotelName = 'The K Hotel';
 $hotelSub = 'BAHRAIN';
+$hotelLogo = '';
 try {
-    $stmtSName = $pdo->query("SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('hotel_name', 'hotel_sub')");
+    $stmtSName = $pdo->query("SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('hotel_name', 'hotel_sub', 'hotel_logo')");
     $sRows = $stmtSName->fetchAll();
     foreach ($sRows as $row) {
         if ($row['setting_key'] === 'hotel_name') $hotelName = $row['setting_value'];
         if ($row['setting_key'] === 'hotel_sub') $hotelSub = $row['setting_value'];
+        if ($row['setting_key'] === 'hotel_logo') $hotelLogo = $row['setting_value'];
     }
 } catch (PDOException $e) {
     // defaults
@@ -569,9 +571,13 @@ if ($member) {
 
     <div class="phone-container">
         <div class="header">
-            <div class="logo-circle">
-                <span class="logo-text"><?php echo htmlspecialchars(strtoupper(substr(ltrim($hotelName, "Thet "), 0, 1) ?: 'H')); ?></span>
-            </div>
+            <?php if (!empty($hotelLogo)): ?>
+                <img src="<?php echo htmlspecialchars($hotelLogo); ?>" style="height: 48px; width: 48px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(251,191,36,0.3);">
+            <?php else: ?>
+                <div class="logo-circle">
+                    <span class="logo-text"><?php echo htmlspecialchars(strtoupper(substr(ltrim($hotelName, "Thet "), 0, 1) ?: 'H')); ?></span>
+                </div>
+            <?php endif; ?>
             <h2 class="brand-title"><?php echo htmlspecialchars(strtoupper($hotelName)); ?></h2>
         </div>
 
@@ -597,7 +603,11 @@ if ($member) {
                         <div class="hotel-name"><?php echo htmlspecialchars(strtoupper($hotelName)); ?></div>
                         <div class="hotel-sub"><?php echo htmlspecialchars(strtoupper($hotelSub)); ?></div>
                     </div>
-                    <div class="chip"></div>
+                    <?php if (!empty($hotelLogo)): ?>
+                        <img src="<?php echo htmlspecialchars($hotelLogo); ?>" style="height: 36px; width: 36px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(255,255,255,0.25);">
+                    <?php else: ?>
+                        <div class="chip"></div>
+                    <?php endif; ?>
                 </div>
                 <div class="card-number">
                     <?php echo implode(' ', str_split($member['membership_number'], 4)); ?>

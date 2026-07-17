@@ -4,6 +4,7 @@ require_once __DIR__ . '/../config/db_connection.php';
 // Fetch settings
 $hotelName = 'The K Hotel';
 $hotelSub = 'BAHRAIN';
+$hotelLogo = '';
 
 try {
     $stmtS = $pdo->query("SELECT setting_key, setting_value FROM settings");
@@ -17,6 +18,9 @@ try {
     }
     if (isset($settings['hotel_sub'])) {
         $hotelSub = $settings['hotel_sub'];
+    }
+    if (isset($settings['hotel_logo'])) {
+        $hotelLogo = $settings['hotel_logo'];
     }
 } catch (PDOException $e) {
     // Fallback defaults
@@ -568,7 +572,11 @@ try {
     <!-- Sidebar Menu -->
     <div class="sidebar">
         <div class="sidebar-brand">
-            <i class="fa-solid fa-hotel"></i>
+            <?php if (!empty($hotelLogo)): ?>
+                <img src="<?php echo htmlspecialchars($hotelLogo); ?>" style="max-height: 40px; max-width: 40px; border-radius: 6px; object-fit: contain;">
+            <?php else: ?>
+                <i class="fa-solid fa-hotel"></i>
+            <?php endif; ?>
             <div class="brand-text">
                 <h1><?php echo htmlspecialchars($hotelName); ?></h1>
                 <span>Loyalty Admin Portal</span>
@@ -943,6 +951,15 @@ try {
                         <div class="form-group">
                             <label>Hotel Location / Sub-label</label>
                             <input type="text" name="hotel_sub" id="settings-hotel-sub" required placeholder="e.g. BAHRAIN">
+                        </div>
+                        <div class="form-group">
+                            <label>Hotel Logo Image</label>
+                            <input type="file" id="settings-hotel-logo-file" accept="image/*" style="width: 100%;">
+                            <input type="hidden" name="hotel_logo" id="settings-hotel-logo-value">
+                            <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+                                <img id="settings-logo-preview" src="" style="max-height: 50px; border-radius: 8px; border: 1px solid var(--border-color); display: none;">
+                                <button type="button" class="btn btn-secondary" id="clear-logo-btn" style="padding: 4px 8px; font-size: 11px; border-color: var(--danger); color: var(--danger); background: rgba(239,68,68,0.05); display: none;">Remove Logo</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1706,6 +1723,14 @@ try {
                         $('#settings-gold-threshold').val(parseFloat(settings.gold_upgrade_threshold || 500.000).toFixed(3));
                         $('#settings-hotel-name').val(settings.hotel_name || 'The K Hotel');
                         $('#settings-hotel-sub').val(settings.hotel_sub || 'BAHRAIN');
+                        $('#settings-hotel-logo-value').val(settings.hotel_logo || '');
+                        if (settings.hotel_logo) {
+                            $('#settings-logo-preview').attr('src', settings.hotel_logo).show();
+                            $('#clear-logo-btn').show();
+                        } else {
+                            $('#settings-logo-preview').attr('src', '').hide();
+                            $('#clear-logo-btn').hide();
+                        }
                         
                         const currency = settings.currency || 'BHD';
                         updateGlobalCurrency(currency);
@@ -2088,29 +2113,39 @@ try {
                 }
             });
 
+            const formData = new FormData();
+            formData.append('timezone', $('#settings-timezone').val());
+            formData.append('currency', $('#settings-currency').val());
+            formData.append('gold_upgrade_threshold', $('#settings-gold-threshold').val());
+            formData.append('fb_points_rules', JSON.stringify(rules));
+            formData.append('departments', JSON.stringify(globalDepartments));
+            formData.append('redeemable_vouchers', JSON.stringify(vouchers));
+            formData.append('hotel_name', $('#settings-hotel-name').val());
+            formData.append('hotel_sub', $('#settings-hotel-sub').val());
+            formData.append('hotel_logo', $('#settings-hotel-logo-value').val());
+            
+            const fileInput = $('#settings-hotel-logo-file')[0];
+            if (fileInput.files.length > 0) {
+                formData.append('logo_file', fileInput.files[0]);
+            }
+
             $.ajax({
                 url: 'admin_actions.php?action=save_settings',
                 type: 'POST',
-                data: {
-                    timezone: $('#settings-timezone').val(),
-                    currency: $('#settings-currency').val(),
-                    gold_upgrade_threshold: $('#settings-gold-threshold').val(),
-                    fb_points_rules: JSON.stringify(rules),
-                    departments: JSON.stringify(globalDepartments),
-                    redeemable_vouchers: JSON.stringify(vouchers),
-                    hotel_name: $('#settings-hotel-name').val(),
-                    hotel_sub: $('#settings-hotel-sub').val()
-                },
+                data: formData,
+                processData: false,
+                contentType: false,
                 success: function(response) {
                     if (response.success) {
                         showToast("System settings updated successfully!");
+                        $('#settings-hotel-logo-file').val('');
                         loadAllData();
                     } else {
                         showToast(response.message, true);
                     }
                 },
-                error: function() {
-                    showToast("Error saving system settings.", true);
+                error: function(xhr) {
+                    showToast(xhr.responseJSON?.message || "Error saving system settings.", true);
                 }
             });
         });
@@ -2517,7 +2552,27 @@ try {
             }
             loadAllData();
             loadStaffDirectory();
-            
+            // Clear logo handler
+            $('#clear-logo-btn').on('click', function() {
+                $('#settings-hotel-logo-value').val('');
+                $('#settings-hotel-logo-file').val('');
+                $('#settings-logo-preview').attr('src', '').hide();
+                $(this).hide();
+            });
+
+            // Logo file select preview handler
+            $('#settings-hotel-logo-file').on('change', function() {
+                const file = this.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        $('#settings-logo-preview').attr('src', e.target.result).show();
+                        $('#clear-logo-btn').show();
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
             // Poll for verified guest status updates every 8 seconds
             setInterval(refreshMembersOnly, 8000);
         });
