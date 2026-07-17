@@ -1430,6 +1430,7 @@
             $.ajax({
                 url: 'admin_actions.php?action=get_pending_upgrades',
                 type: 'GET',
+                cache: false,
                 success: function(response) {
                     if (response.success) {
                         const gmPending = response.data.pending_gm;
@@ -1473,6 +1474,7 @@
             $.ajax({
                 url: 'admin_actions.php?action=get_redemptions',
                 type: 'GET',
+                cache: false,
                 success: function(response) {
                     if (response.success) {
                         const redemptions = response.data;
@@ -1511,6 +1513,7 @@
             $.ajax({
                 url: 'admin_actions.php?action=get_reports',
                 type: 'GET',
+                cache: false,
                 success: function(response) {
                     if (response.success) {
                         const data = response.data;
@@ -1545,6 +1548,7 @@
             $.ajax({
                 url: 'admin_actions.php?action=get_settings',
                 type: 'GET',
+                cache: false,
                 success: function(response) {
                     if (response.success) {
                         const settings = response.data;
@@ -1655,6 +1659,7 @@
                 url: 'admin_actions.php?action=get_member_spending_details',
                 type: 'GET',
                 data: { member_id: id },
+                cache: false,
                 success: function(response) {
                     if (response.success) {
                         const data = response.data;
@@ -2106,6 +2111,7 @@
             $.ajax({
                 url: 'admin_actions.php?action=get_staff_members',
                 type: 'GET',
+                cache: false,
                 success: function(response) {
                     if (response.success) {
                         globalStaffDirectory = response.data;
