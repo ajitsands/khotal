@@ -1775,11 +1775,20 @@
 
         function addPointsRuleRow(service = 'F&B', threshold = '', points = '') {
             const rowId = 'points-rule-row-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+            
+            let optHtml = '';
+            globalDepartments.forEach(dept => {
+                const selected = dept === service ? 'selected' : '';
+                optHtml += `<option value="${dept}" ${selected}>${dept}</option>`;
+            });
+
             const rowHtml = `
                 <div class="form-grid points-rule-row" id="${rowId}" style="grid-template-columns: 1.2fr 1fr 1fr auto; align-items: flex-end; margin-bottom: 12px; gap: 15px;">
                     <div class="form-group" style="margin-bottom:0;">
                         <label>Service / Department</label>
-                        <input type="text" class="rule-service" required value="${service}" placeholder="e.g. F&B, Spa, Room" style="width: 100%;">
+                        <select class="rule-service" data-selected="${service}" required style="width: 100%; padding: 8px 10px; font-size:12px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-main);">
+                            ${optHtml}
+                        </select>
                     </div>
                     <div class="form-group" style="margin-bottom:0;">
                         <label>Spending Threshold (<span class="currency-symbol">BHD</span>)</label>
@@ -1835,6 +1844,20 @@
             });
             $('#spendingForm select[name="source_dept"]').html(srvHtml);
             $('#add-staff-department-select').html(deptHtml);
+
+            // Re-populate dropdowns in existing point rules rows without losing selection
+            $('.points-rule-row').each(function() {
+                const $select = $(this).find('.rule-service');
+                if ($select.length) {
+                    const currentVal = $select.val() || $select.attr('data-selected');
+                    let optHtml = '';
+                    globalDepartments.forEach(dept => {
+                        const selected = dept === currentVal ? 'selected' : '';
+                        optHtml += `<option value="${dept}" ${selected}>${dept}</option>`;
+                    });
+                    $select.html(optHtml);
+                }
+            });
         }
 
         function addDepartmentFromInput() {
