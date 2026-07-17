@@ -17,7 +17,8 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('timezone', 'Asia/Bahrain'),
 ('currency', 'BHD'),
 ('fb_points_rules', '[{"threshold": 50.000, "points": 10}, {"threshold": 100.000, "points": 20}]'),
-('departments', '["F&B", "Front Office", "Spa"]')
+('departments', '["F&B", "Front Office", "Spa"]'),
+('gold_upgrade_threshold', '500.000')
 ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value);
 
 -- 4. Alter source_dept from ENUM to VARCHAR in spending_records

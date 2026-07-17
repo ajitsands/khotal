@@ -279,26 +279,33 @@ switch ($action) {
 
     case 'get_pending_upgrades':
         try {
-            // Recommend Gold upgrade for K Plus Silver/Brown card members who spent more than 500 BHD
-            // Or just fetch all active Silver/Brown members and calculate their spending
+            // Fetch threshold from settings table (default to 500.000 if not configured)
+            $stmtThresh = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_key = 'gold_upgrade_threshold'");
+            $stmtThresh->execute();
+            $thresholdRow = $stmtThresh->fetch();
+            $threshold = $thresholdRow ? (float)$thresholdRow['setting_value'] : 500.000;
+
+            // Recommend Gold upgrade for K Plus Silver/Brown card members who spent more than the threshold
             $sql = "SELECT m.id, m.membership_number, m.first_name, m.last_name, m.card_type, 
                            COALESCE(SUM(s.amount), 0) as total_spending 
                     FROM members m 
                     LEFT JOIN spending_records s ON m.id = s.member_id 
                     WHERE m.membership_type = 'K Plus' AND m.card_type IN ('Silver', 'Brown')
                     GROUP BY m.id
-                    HAVING total_spending >= 500.000";
+                    HAVING total_spending >= :threshold";
             
-            $stmt = $pdo->query($sql);
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute(['threshold' => $threshold]);
             $recommendations = $stmt->fetchAll();
             
             // Also get list of members pending GM Approval
             $stmt2 = $pdo->query("SELECT * FROM members WHERE card_type = 'Gold' AND status = 'Pending Approval'");
             $pendingGMAproval = $stmt2->fetchAll();
-
+ 
             sendJSONResponse(true, [
                 'recommendations' => $recommendations,
-                'pending_gm' => $pendingGMAproval
+                'pending_gm' => $pendingGMAproval,
+                'gold_upgrade_threshold' => $threshold
             ], "Upgrade details fetched.");
         } catch (PDOException $e) {
             sendJSONResponse(false, null, $e->getMessage(), 500);
@@ -476,6 +483,7 @@ switch ($action) {
         $currency = isset($_POST['currency']) ? trim($_POST['currency']) : 'BHD';
         $rulesJson = isset($_POST['fb_points_rules']) ? trim($_POST['fb_points_rules']) : '[]';
         $deptsJson = isset($_POST['departments']) ? trim($_POST['departments']) : '[]';
+        $goldThreshold = isset($_POST['gold_upgrade_threshold']) ? (float)$_POST['gold_upgrade_threshold'] : 500.000;
 
         try {
             $pdo->beginTransaction();
@@ -485,6 +493,7 @@ switch ($action) {
             $stmt->execute(['currency', $currency]);
             $stmt->execute(['fb_points_rules', $rulesJson]);
             $stmt->execute(['departments', $deptsJson]);
+            $stmt->execute(['gold_upgrade_threshold', $goldThreshold]);
 
             $pdo->commit();
             sendJSONResponse(true, null, "Settings saved successfully.");

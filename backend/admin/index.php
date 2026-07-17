@@ -908,6 +908,10 @@
                             <label>Default Currency Symbol</label>
                             <input type="text" name="currency" id="settings-currency" required placeholder="e.g. BHD, USD, EUR">
                         </div>
+                        <div class="form-group">
+                            <label>Gold Card Upgrade Threshold (<span class="currency-label">BHD</span>)</label>
+                            <input type="number" step="0.001" name="gold_upgrade_threshold" id="settings-gold-threshold" required placeholder="500.000">
+                        </div>
                     </div>
                 </div>
 
@@ -1453,12 +1457,13 @@
                             `;
                         });
 
+                        const thresholdVal = parseFloat(response.data.gold_upgrade_threshold || 500.000).toFixed(3);
                         recommend.forEach(rec => {
                             actionItemsHtml += `
                                 <div style="display:flex; justify-content:space-between; align-items:center; background:var(--card-bg); border:1px solid var(--border-color); padding:16px; border-radius:8px; margin-bottom:10px; border-left:4px solid var(--accent-gold);">
                                     <div>
                                         <h5 style="color:var(--text-main); font-size:14px;"><i class="fa-solid fa-circle-exclamation"></i> SPENDING MILESTONE REACHED: Gold Upgrade Recommended</h5>
-                                        <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Guest: <strong>${rec.first_name} ${rec.last_name} (${rec.membership_number})</strong> | Tier: ${rec.card_type} | Total spent: <strong>${rec.total_spending} BHD</strong> (Threshold >= 500.000 BHD)</p>
+                                        <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Guest: <strong>${rec.first_name} ${rec.last_name} (${rec.membership_number})</strong> | Tier: ${rec.card_type} | Total spent: <strong>${parseFloat(rec.total_spending).toFixed(3)} ${currentCurrency}</strong> (Threshold >= ${thresholdVal} ${currentCurrency})</p>
                                     </div>
                                     <button class="btn" style="padding:8px 16px; font-size:12px; background:var(--primary);" onclick="recommendGold(${rec.id})">Flag for GM Approval</button>
                                 </div>
@@ -1554,6 +1559,7 @@
                         const settings = response.data;
                         $('#settings-timezone').val(settings.timezone || 'Asia/Bahrain');
                         $('#settings-currency').val(settings.currency || 'BHD');
+                        $('#settings-gold-threshold').val(parseFloat(settings.gold_upgrade_threshold || 500.000).toFixed(3));
                         
                         const currency = settings.currency || 'BHD';
                         updateGlobalCurrency(currency);
@@ -1850,6 +1856,7 @@
                 data: {
                     timezone: $('#settings-timezone').val(),
                     currency: $('#settings-currency').val(),
+                    gold_upgrade_threshold: $('#settings-gold-threshold').val(),
                     fb_points_rules: JSON.stringify(rules),
                     departments: JSON.stringify(globalDepartments)
                 },
@@ -1909,6 +1916,7 @@
         $('#settings-currency').on('input', updateRulesCurrencyLabel);
         
         function updateGlobalCurrency(currency) {
+            currentCurrency = currency;
             $('.currency-label').text(currency);
         }
 
