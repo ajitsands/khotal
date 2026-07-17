@@ -2402,7 +2402,15 @@
             $('#redeem-member-id').val(id);
             $('#redeem-guest-name').val(name);
             $('#redeem-available-balance').val(balance + ' Pts');
-            $('#redeem-points-input').attr('max', balance);
+            
+            // Populate vouchers dropdown based on available points
+            populateRedemptionVouchersDropdown(balance);
+            
+            // Reset validity fields
+            $('#redeem-validity-select').val('1 Year');
+            $('#redeem-custom-date-group').hide();
+            $('#redeem-custom-date-input').val('').prop('required', false);
+            
             $('#redeemPointsModal').css('display', 'flex');
         }
 
