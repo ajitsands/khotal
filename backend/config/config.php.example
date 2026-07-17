@@ -1,0 +1,100 @@
+<?php
+// Configuration File for K Hotel Loyalty Programs - Example Template
+// Copy this file to config.php and update the credentials
+
+// Database Configuration
+define('DB_HOST', '127.0.0.1');
+define('DB_PORT', '3306');
+define('DB_USER', 'your_db_user');
+define('DB_PASS', 'your_db_password');
+define('DB_NAME', 'privilagecard');
+
+// URL Encryption & Security Configuration
+define('ENCRYPTION_KEY', 'your_encryption_key_here'); // Keep secret
+define('ENCRYPTION_METHOD', 'aes-256-cbc');
+
+// GitHub Webhook Configuration (used by webhook.php for sync)
+define('WEBHOOK_SECRET', 'your_webhook_secret_here');
+define('REPO_DIR', '/path/to/your/repo/on/server');
+
+// Timezone
+date_default_timezone_set('Asia/Bahrain');
+
+// Error Reporting (Change to 0 in production)
+ini_set('display_errors', 0);
+error_reporting(E_ALL);
+
+// Response JSON Helper
+function sendJSONResponse($success, $data = null, $message = '', $statusCode = 200) {
+    header('Content-Type: application/json');
+    http_response_code($statusCode);
+    echo json_encode([
+        'success' => $success,
+        'data' => $data,
+        'message' => $message
+    ], JSON_PRETTY_PRINT);
+    exit;
+}
+
+// URL Encryptor/Decryptor Class
+class UrlEncryptor {
+    /**
+     * Encrypts a query string or array of parameters
+     */
+    public static function encryptUrl($baseUrl, $params) {
+        $queryString = is_array($params) ? http_build_query($params) : $params;
+        
+        // Generate an IV
+        $ivlen = openssl_cipher_iv_length(ENCRYPTION_METHOD);
+        $iv = openssl_random_pseudo_bytes($ivlen);
+        
+        // Encrypt the string
+        $encryptedRaw = openssl_encrypt($queryString, ENCRYPTION_METHOD, ENCRYPTION_KEY, OPENSSL_RAW_DATA, $iv);
+        
+        // Use HMAC to prevent tampering
+        $hmac = hash_hmac('sha256', $encryptedRaw, ENCRYPTION_KEY, true);
+        
+        // Combine IV, HMAC, and encrypted payload and encode as base64url safe
+        $token = base64_encode($iv . $hmac . $encryptedRaw);
+        
+        // Make token URL safe
+        $urlSafeToken = str_replace(['+', '/', '='], ['-', '_', ''], $token);
+        
+        return $baseUrl . (strpos($baseUrl, '?') === false ? '?' : '&') . 'token=' . $urlSafeToken;
+    }
+
+    /**
+     * Decrypts a token from a URL and returns parameters as an array
+     */
+    public static function decryptUrlToken($token) {
+        // Revert URL safe characters
+        $base64Token = str_replace(['-', '_'], ['+', '/'], $token);
+        $tokenRaw = base64_decode($base64Token);
+        
+        $ivlen = openssl_cipher_iv_length(ENCRYPTION_METHOD);
+        if (strlen($tokenRaw) < $ivlen + 32) {
+            return false; // Invalid token length
+        }
+        
+        $iv = substr($tokenRaw, 0, $ivlen);
+        $hmac = substr($tokenRaw, $ivlen, 32);
+        $encryptedRaw = substr($tokenRaw, $ivlen + 32);
+        
+        // Verify HMAC
+        $calculatedHmac = hash_hmac('sha256', $encryptedRaw, ENCRYPTION_KEY, true);
+        if (!hash_equals($hmac, $calculatedHmac)) {
+            return false; // Data has been tampered with
+        }
+        
+        // Decrypt
+        $decryptedString = openssl_decrypt($encryptedRaw, ENCRYPTION_METHOD, ENCRYPTION_KEY, OPENSSL_RAW_DATA, $iv);
+        if ($decryptedString === false) {
+            return false;
+        }
+        
+        // Parse back to array
+        parse_str($decryptedString, $outputParams);
+        return $outputParams;
+    }
+}
+?>
