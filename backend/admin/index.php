@@ -1892,6 +1892,9 @@
                         let tableHtml = '';
 
                         members.forEach(member => {
+                            // Update membersMap local cache
+                            membersMap[member.id] = member;
+
                             if (member.membership_type === 'K Plus') kplus++;
                             else kreward++;
 
@@ -1907,7 +1910,7 @@
 
                             tableHtml += `
                                 <tr>
-                                    <td><strong style="color:var(--accent-gold);">${member.membership_number}</strong></td>
+                                    <td><strong style="color:var(--accent-gold);">${formatCardNumber(member.membership_number)}</strong></td>
                                     <td>${member.title} ${member.first_name} ${member.last_name}</td>
                                     <td>${member.mobile}</td>
                                     <td>${member.nationality}</td>
@@ -1921,6 +1924,7 @@
                                         ${redeemBtn}
                                         <button class="btn btn-secondary" style="padding: 6px 12px; font-size:12px;" onclick="showMemberPassQR(${member.id}, '${member.membership_number}')"><i class="fa-solid fa-qrcode"></i> QR Pass</button>
                                         <button class="btn btn-secondary" style="padding: 6px 12px; font-size:12px;" onclick="viewMemberDetails(${member.id}, '${member.first_name} ${member.last_name}', '${member.membership_number}', '${member.membership_type}')"><i class="fa-solid fa-list"></i> Details</button>
+                                        <button class="btn btn-secondary" style="padding: 6px 12px; font-size:12px; color:var(--text-main); border-color:var(--border-color); background:var(--bg-color);" onclick="startMemberEdit(${member.id})"><i class="fa-solid fa-pencil"></i> Edit</button>
                                         ${member.card_type !== 'Gold' && member.membership_type === 'K Plus' ? 
                                             `<button class="btn" style="padding: 6px 12px; font-size:12px;" onclick="recommendGold(${member.id})"><i class="fa-solid fa-arrow-up"></i> Upgrade</button>` : ''
                                         }
