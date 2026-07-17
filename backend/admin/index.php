@@ -1217,6 +1217,20 @@
         </div>
     </div>
 
+    <!-- Custom Reusable Confirmation Modal -->
+    <div id="customConfirmModal" class="modal" style="z-index: 10000;">
+        <div class="modal-content" style="width: 420px; max-width: 90%; text-align: center; padding: 30px 24px; border-radius: 16px; border: 1px solid rgba(251,191,36,0.25);">
+            <div style="font-size: 44px; color: var(--accent-gold); margin-bottom: 16px;">
+                <i class="fa-solid fa-circle-question"></i>
+            </div>
+            <h4 style="color: var(--text-main); margin-bottom: 15px; font-weight: 700; font-size: 16px; line-height:1.5;" id="custom-confirm-message">Are you sure?</h4>
+            <div style="display: flex; justify-content: center; gap: 12px; margin-top: 24px;">
+                <button type="button" class="btn btn-secondary" id="custom-confirm-cancel-btn" style="min-width: 110px;">Cancel</button>
+                <button type="button" class="btn" id="custom-confirm-ok-btn" style="min-width: 110px; background: var(--primary); color: #fff;">Confirm</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Manage Staff Directory Modal -->
     <div id="staffDirectoryModal" class="modal">
         <div class="modal-content" style="width: 950px; max-width: 95%;">
@@ -1917,23 +1931,23 @@
         // Process Redemption request
         function processRedemption(id, status) {
             if (status === 'Rejected') {
-                if (!confirm("Are you sure you want to REJECT this redemption request?")) return;
-                
-                $.ajax({
-                    url: 'admin_actions.php?action=approve_redemption',
-                    type: 'POST',
-                    data: { request_id: id, status: 'Rejected' },
-                    success: function(response) {
-                        if (response.success) {
-                            showToast(response.message);
-                            loadAllData();
-                        } else {
-                            showToast(response.message, true);
+                showCustomConfirm("Are you sure you want to REJECT this redemption request?", function() {
+                    $.ajax({
+                        url: 'admin_actions.php?action=approve_redemption',
+                        type: 'POST',
+                        data: { request_id: id, status: 'Rejected' },
+                        success: function(response) {
+                            if (response.success) {
+                                showToast(response.message);
+                                loadAllData();
+                            } else {
+                                showToast(response.message, true);
+                            }
+                        },
+                        error: function(xhr) {
+                            showToast(xhr.responseJSON?.message || "Failed to process redemption", true);
                         }
-                    },
-                    error: function(xhr) {
-                        showToast(xhr.responseJSON?.message || "Failed to process redemption", true);
-                    }
+                    });
                 });
             } else if (status === 'Approved') {
                 // Find redemption details from the table row
@@ -2202,33 +2216,48 @@
             }
         }
 
-        function markVoucherAsUsed(voucherId, memberId) {
-            if (!confirm("Are you sure you want to mark this voucher as USED? This action cannot be undone.")) return;
+        function showCustomConfirm(message, onConfirm) {
+            $('#custom-confirm-message').text(message);
+            $('#customConfirmModal').css('display', 'flex');
             
-            $.ajax({
-                url: 'admin_actions.php?action=use_voucher',
-                type: 'POST',
-                data: { voucher_id: voucherId },
-                success: function(response) {
-                    if (response.success) {
-                        showToast(response.message);
-                        
-                        // Extract subtitles to refresh modal dynamically
-                        const subtitleText = $('#details-modal-subtitle').text();
-                        const match = subtitleText.match(/Guest:\s*([^\(]+)\(([^)]+)\)\s*\|\s*Program:\s*(.*)/);
-                        const name = match ? match[1].trim() : '';
-                        const cardNum = match ? match[2].trim() : '';
-                        const program = match ? match[3].trim() : '';
-                        
-                        viewMemberDetails(memberId, name, cardNum, program);
-                        loadAllData();
-                    } else {
-                        showToast(response.message, true);
+            // Unbind previous clicks
+            $('#custom-confirm-ok-btn').off('click').on('click', function() {
+                $('#customConfirmModal').css('display', 'none');
+                if (typeof onConfirm === 'function') onConfirm();
+            });
+            
+            $('#custom-confirm-cancel-btn').off('click').on('click', function() {
+                $('#customConfirmModal').css('display', 'none');
+            });
+        }
+
+        function markVoucherAsUsed(voucherId, memberId) {
+            showCustomConfirm("Are you sure you want to mark this voucher as USED? This action cannot be undone.", function() {
+                $.ajax({
+                    url: 'admin_actions.php?action=use_voucher',
+                    type: 'POST',
+                    data: { voucher_id: voucherId },
+                    success: function(response) {
+                        if (response.success) {
+                            showToast(response.message);
+                            
+                            // Extract subtitles to refresh modal dynamically
+                            const subtitleText = $('#details-modal-subtitle').text();
+                            const match = subtitleText.match(/Guest:\s*([^\(]+)\(([^)]+)\)\s*\|\s*Program:\s*(.*)/);
+                            const name = match ? match[1].trim() : '';
+                            const cardNum = match ? match[2].trim() : '';
+                            const program = match ? match[3].trim() : '';
+                            
+                            viewMemberDetails(memberId, name, cardNum, program);
+                            loadAllData();
+                        } else {
+                            showToast(response.message, true);
+                        }
+                    },
+                    error: function() {
+                        showToast("Error updating voucher status", true);
                     }
-                },
-                error: function() {
-                    showToast("Error updating voucher status", true);
-                }
+                });
             });
         }
 
@@ -2530,19 +2559,20 @@
 
         // Delete staff member
         function deleteStaffMember(id) {
-            if (!confirm("Are you sure you want to remove this staff member from the directory?")) return;
-            $.ajax({
-                url: 'admin_actions.php?action=delete_staff_member',
-                type: 'POST',
-                data: { id: id },
-                success: function(response) {
-                    if (response.success) {
-                        showToast("Staff member removed.");
-                        loadStaffDirectory();
-                    } else {
-                        showToast(response.message, true);
+            showCustomConfirm("Are you sure you want to remove this staff member from the directory?", function() {
+                $.ajax({
+                    url: 'admin_actions.php?action=delete_staff_member',
+                    type: 'POST',
+                    data: { id: id },
+                    success: function(response) {
+                        if (response.success) {
+                            showToast("Staff member removed.");
+                            loadStaffDirectory();
+                        } else {
+                            showToast(response.message, true);
+                        }
                     }
-                }
+                });
             });
         }
 

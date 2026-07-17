@@ -702,6 +702,29 @@ if ($member) {
                 </div>
             </div>
 
+            <!-- Custom Reusable Confirm Modal (Client) -->
+            <div id="pwa-confirm-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:10000; align-items:center; justify-content:center; padding: 20px;">
+                <div style="background:#111827; border: 1px solid rgba(251,191,36,0.25); border-radius:18px; width:100%; max-width:350px; padding: 24px; text-align:center; box-shadow:0 8px 40px rgba(0,0,0,0.6);">
+                    <div style="font-size:36px; color:#fbbf24; margin-bottom:12px;"><i class="fa-solid fa-circle-question"></i></div>
+                    <div id="pwa-confirm-msg" style="font-size:13px; color:#f3f4f6; line-height:1.6; font-weight:700;">Are you sure?</div>
+                    <div style="display:flex; justify-content:center; gap:10px; margin-top:20px;">
+                        <button type="button" id="pwa-confirm-cancel-btn" style="flex:1; padding:10px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:#d1d5db; border-radius:10px; font-size:12px; font-weight:700; cursor:pointer; border-radius: 20px;">Cancel</button>
+                        <button type="button" id="pwa-confirm-ok-btn" style="flex:1; padding:10px; background:var(--primary); border:none; color:#fff; border-radius:10px; font-size:12px; font-weight:700; cursor:pointer; border-radius: 20px;">Confirm</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Custom Reusable Alert Modal (Client) -->
+            <div id="pwa-alert-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:10000; align-items:center; justify-content:center; padding: 20px;">
+                <div style="background:#111827; border: 1px solid rgba(251,191,36,0.2); border-radius:18px; width:100%; max-width:350px; padding: 24px; text-align:center; box-shadow:0 8px 40px rgba(0,0,0,0.6);">
+                    <div style="font-size:36px; color:#fbbf24; margin-bottom:12px;"><i class="fa-solid fa-circle-info"></i></div>
+                    <div id="pwa-alert-msg" style="font-size:13px; color:#f3f4f6; line-height:1.6;">Message</div>
+                    <div style="margin-top:20px;">
+                        <button type="button" onclick="document.getElementById('pwa-alert-modal').style.display='none'" style="width:100%; padding:10px; background:var(--primary); border:none; color:#fff; border-radius:20px; font-size:12px; font-weight:700; cursor:pointer;">OK</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- iOS Install Modal -->
             <div id="ios-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; align-items:flex-end; justify-content:center; padding: 0 12px 20px;">
                 <div style="background:#1a2035; border-radius:20px; padding:28px 22px; width:100%; max-width:400px; position:relative; box-shadow:0 -4px 40px rgba(0,0,0,0.5);">
@@ -913,6 +936,25 @@ if ($member) {
     </div>
 
     <script>
+        function showPwaConfirm(msg, onConfirm) {
+            $('#pwa-confirm-msg').html(msg);
+            $('#pwa-confirm-modal').css('display', 'flex');
+            
+            $('#pwa-confirm-ok-btn').off('click').on('click', function() {
+                $('#pwa-confirm-modal').css('display', 'none');
+                if (typeof onConfirm === 'function') onConfirm();
+            });
+            
+            $('#pwa-confirm-cancel-btn').off('click').on('click', function() {
+                $('#pwa-confirm-modal').css('display', 'none');
+            });
+        }
+
+        function showPwaAlert(msg) {
+            $('#pwa-alert-msg').html(msg);
+            $('#pwa-alert-modal').css('display', 'flex');
+        }
+
         function confirmGuestCheckin() {
             // Show spinner
             $('#btn-icon').hide();
@@ -940,13 +982,13 @@ if ($member) {
                             }, 10000);
                         });
                     } else {
-                        alert(response.message || "Verification failed");
+                        showPwaAlert(response.message || "Verification failed");
                     }
                 },
                 error: function() {
                     $('#btn-spinner').hide();
                     $('#btn-icon').show();
-                    alert("Connection error. Please try again.");
+                    showPwaAlert("Connection error. Please try again.");
                 }
             });
         }
@@ -1168,33 +1210,31 @@ if ($member) {
         function requestRedeem(awardTitle, pointsCost) {
             const currentBalance = parseInt($('#live-points-card-val').text() || '0');
             if (currentBalance < pointsCost) {
-                alert(`Insufficient points! This reward requires ${pointsCost} points, but you only have ${currentBalance} points.`);
+                showPwaAlert(`Insufficient points! This reward requires ${pointsCost} points, but you only have ${currentBalance} points.`);
                 return;
             }
 
-            if (!confirm(`Are you sure you want to request to redeem "${awardTitle}" for ${pointsCost} points?`)) {
-                return;
-            }
-
-            $.ajax({
-                url: window.location.href,
-                type: 'POST',
-                data: {
-                    action: 'request_redemption',
-                    token: '<?php echo htmlspecialchars($token); ?>',
-                    award_title: awardTitle
-                },
-                success: function(response) {
-                    if (response.success) {
-                        alert(response.message);
-                        pollLiveStatus();
-                    } else {
-                        alert(response.message || "Redemption request failed");
+            showPwaConfirm(`Are you sure you want to request to redeem "${awardTitle}" for ${pointsCost} points?`, function() {
+                $.ajax({
+                    url: window.location.href,
+                    type: 'POST',
+                    data: {
+                        action: 'request_redemption',
+                        token: '<?php echo htmlspecialchars($token); ?>',
+                        award_title: awardTitle
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showPwaAlert(response.message);
+                            pollLiveStatus();
+                        } else {
+                            showPwaAlert(response.message || "Redemption request failed");
+                        }
+                    },
+                    error: function() {
+                        showPwaAlert("Connection error. Please try again.");
                     }
-                },
-                error: function() {
-                    alert("Connection error. Please try again.");
-                }
+                });
             });
         }
 
