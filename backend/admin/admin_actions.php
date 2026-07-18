@@ -829,22 +829,72 @@ switch ($action) {
         break;
 
     case 'generate_encrypted_link':
-        // Action to encrypt outbound urls
-        $url = isset($_POST['target_url']) ? $_POST['target_url'] : '';
-        $paramsStr = isset($_POST['params']) ? $_POST['params'] : '';
+        // Action to encrypt outbound urls with campaign logs and click tracking
+        $url = isset($_POST['target_url']) ? trim($_POST['target_url']) : '';
+        $memberId = isset($_POST['member_id']) && $_POST['member_id'] !== '' ? (int)$_POST['member_id'] : 0;
+        $staffId = isset($_POST['staff_id']) ? trim($_POST['staff_id']) : '';
+        $discountRate = isset($_POST['discount_rate']) ? trim($_POST['discount_rate']) : '';
+        $promoCode = isset($_POST['promo_code']) ? trim($_POST['promo_code']) : '';
         
         if (empty($url)) {
-            sendJSONResponse(false, null, "URL is required.", 400);
+            sendJSONResponse(false, null, "Target URL is required.", 400);
         }
 
-        // Parse key-value params (format: param1=val1&param2=val2)
-        parse_str($paramsStr, $paramsArray);
-        
-        $securedUrl = UrlEncryptor::encryptUrl($url, $paramsArray);
+        // Build parameters query string
+        $paramsArray = [];
+        if ($memberId > 0) $paramsArray['member_id'] = $memberId;
+        if (!empty($staffId)) $paramsArray['staff_ref'] = $staffId;
+        if (!empty($discountRate)) $paramsArray['discount_rate'] = $discountRate;
+        if (!empty($promoCode)) $paramsArray['promo_code'] = $promoCode;
 
-        sendJSONResponse(true, [
-            'secured_url' => $securedUrl
-        ], "URL encrypted successfully.");
+        // Generate encrypted secure URL
+        $securedUrl = UrlEncryptor::encryptUrl($url, $paramsArray);
+        
+        // Extract the raw token string
+        $tokenParts = explode('token=', $securedUrl);
+        $token = isset($tokenParts[1]) ? $tokenParts[1] : '';
+
+        if (empty($token)) {
+            sendJSONResponse(false, null, "Failed to generate security token.", 500);
+        }
+
+        try {
+            // Save to campaign_links table
+            $stmt = $pdo->prepare("INSERT INTO campaign_links (
+                token, target_url, member_id, staff_id, discount_rate, promo_code
+            ) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([
+                $token,
+                $url,
+                $memberId > 0 ? $memberId : null,
+                !empty($staffId) ? $staffId : null,
+                !empty($discountRate) ? $discountRate : null,
+                !empty($promoCode) ? $promoCode : null
+            ]);
+
+            sendJSONResponse(true, [
+                'token' => $token,
+                'secured_url' => $securedUrl
+            ], "Campaign link generated and locked successfully.");
+        } catch (PDOException $e) {
+            sendJSONResponse(false, null, $e->getMessage(), 500);
+        }
+        break;
+
+    case 'get_campaign_links':
+        try {
+            $stmt = $pdo->query("
+                SELECT c.*, m.first_name, m.last_name, m.membership_number, s.name as staff_name 
+                FROM campaign_links c
+                LEFT JOIN members m ON c.member_id = m.id
+                LEFT JOIN staff_directory s ON c.staff_id = s.staff_id
+                ORDER BY c.created_at DESC
+            ");
+            $campaigns = $stmt->fetchAll();
+            sendJSONResponse(true, $campaigns, "Campaign links loaded successfully.");
+        } catch (PDOException $e) {
+            sendJSONResponse(false, null, $e->getMessage(), 500);
+        }
         break;
 
     case 'decrypt_url_token':

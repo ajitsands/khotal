@@ -20,3 +20,6 @@ Thumbs.db
 
 # Project configuration (containing credentials)
 backend/config/config.php
+
+# PHP Session files
+backend/sessions/sess_*

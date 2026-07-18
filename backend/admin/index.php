@@ -894,46 +894,83 @@ try {
                     </table>
                 </div>
             </div>
-        </div>
-
-        <!-- Link Encryption View Pane -->
+                <!-- Link Encryption View Pane -->
         <div id="view-security" class="view-pane">
-            <div class="form-section">
-                <div class="section-title"><i class="fa-solid fa-user-shield"></i> Outbound URL Encryption Engine</div>
-                <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 14px;">
-                    Ensure outbound email/SMS promotional campaigns send fully-encrypted secure tokens rather than raw, editable URL queries. 
-                    This prevents users from tampering with user IDs, discount ratios, or promotion identifiers.
-                </p>
-                
-                <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
-                    <div class="form-group">
-                        <label>Target Offer / Promotion URL</label>
-                        <input type="text" id="encrypt-target-url" value="https://thekhotel.com/promos/special_brunch.php" placeholder="Enter base promo page url">
+            <div style="display: grid; grid-template-columns: 1fr; gap: 25px;">
+                <!-- Link Generator Card -->
+                <div class="form-section">
+                    <div class="section-title"><i class="fa-solid fa-user-shield"></i> Outbound URL Encryption & Click Tracker</div>
+                    <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 14px;">
+                        Create secured promotion campaign links. Outbound URLs are routed through our tracking redirector to log customer hits, and contain fully-encrypted URL tokens to prevent tampering with member IDs or rates.
+                    </p>
+                    
+                    <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="form-group">
+                            <label>Target Offer / Promotion URL *</label>
+                            <input type="text" id="encrypt-target-url" value="https://thekhotel.com/promos/special_brunch.php" placeholder="Enter base promo page url" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Select Customer (Member)</label>
+                            <select id="encrypt-member-select" style="width:100%; padding:10px; background:rgba(0,0,0,0.1); border:1px solid var(--border-color); border-radius:8px; color:#fff;">
+                                <option value="">-- No Customer Link / General Campaign --</option>
+                                <!-- Populated dynamically from loaded members -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Select Staff Referrer</label>
+                            <select id="encrypt-staff-select" style="width:100%; padding:10px; background:rgba(0,0,0,0.1); border:1px solid var(--border-color); border-radius:8px; color:#fff;">
+                                <option value="">-- No Staff Referrer --</option>
+                                <!-- Populated dynamically from staff directory -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Discount Rate / Value (e.g. 20% or 10 BHD)</label>
+                            <input type="text" id="encrypt-discount-rate" placeholder="e.g. 25% or 15 BHD">
+                        </div>
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label>Promo Code</label>
+                            <input type="text" id="encrypt-promo-code" placeholder="e.g. SUMMER2026">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Query Parameters (Format: key1=val1&key2=val2)</label>
-                        <input type="text" id="encrypt-params" value="member_id=12&discount_rate=20&promo_code=BRUNCH2026&staff_ref=FO102" placeholder="e.g. member_id=45&discount=15">
+                    
+                    <div style="margin-top: 20px;">
+                        <button class="btn" onclick="generateSecureLink()"><i class="fa-solid fa-link"></i> Generate Secure Campaign Link</button>
                     </div>
-                </div>
-                <div style="margin-top: 10px;">
-                    <button class="btn" onclick="generateSecureLink()"><i class="fa-solid fa-lock"></i> Encrypt Link & Generate Token</button>
-                </div>
-                
-                <div class="encrypted-result-box" id="encryption-result">
-                    <h4 style="color: var(--accent-gold); margin-bottom: 8px;"><i class="fa-solid fa-check-circle"></i> Securely Encrypted URL:</h4>
-                    <p id="encrypted-url-text" style="font-family: monospace; font-size: 13px; color: var(--text-main);"></p>
-                    <div style="margin-top: 15px; display: flex; gap: 10px;">
-                        <button class="btn btn-secondary" onclick="copyEncryptedUrl()"><i class="fa-solid fa-copy"></i> Copy Link</button>
-                        <button class="btn btn-secondary" onclick="testDecryptToken()"><i class="fa-solid fa-key"></i> Test Decrypt Token</button>
+                    
+                    <div class="encrypted-result-box" id="encryption-result">
+                        <h4 style="color: var(--accent-gold); margin-bottom: 8px;"><i class="fa-solid fa-check-circle"></i> Securely Tracked URL:</h4>
+                        <p id="encrypted-url-text" style="font-family: monospace; font-size: 13px; color: var(--text-main); word-break: break-all; user-select: all; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 6px;"></p>
+                        <div style="margin-top: 15px; display: flex; gap: 10px;">
+                            <button class="btn btn-secondary" onclick="copyEncryptedUrl()"><i class="fa-solid fa-copy"></i> Copy Link</button>
+                        </div>
                     </div>
                 </div>
 
-                <div class="encrypted-result-box" id="decryption-result" style="border-color: var(--success);">
-                    <h4 style="color: var(--success); margin-bottom: 8px;"><i class="fa-solid fa-unlock"></i> Decrypted Payload Result:</h4>
-                    <pre id="decrypted-json-text" style="font-family: monospace; font-size: 13px; color: var(--text-main);"></pre>
+                <!-- Campaigns & Click Tracker Stats -->
+                <div class="form-section">
+                    <div class="section-title"><i class="fa-solid fa-chart-bar"></i> Active Secure Campaigns & Hits Tracker</div>
+                    <div class="table-responsive">
+                        <table id="campaignsTable" class="display" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Created At</th>
+                                    <th>Target URL</th>
+                                    <th>Customer / Member</th>
+                                    <th>Staff Referrer</th>
+                                    <th>Rate / Promo Code</th>
+                                    <th>Total Hits (Clicks)</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="campaigns-table-body">
+                                <!-- Populated dynamically via AJAX -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-        </div>
+        </div>  </div>
 
         <?php if ($userRole === 'admin'): ?>
         <!-- Settings View Pane -->
@@ -1720,6 +1757,12 @@ try {
                                 "search": "Filter Members:"
                             }
                         });
+
+                        let memberSelectHtml = '<option value="">-- No Customer Link / General Campaign --</option>';
+                        members.forEach(member => {
+                            memberSelectHtml += `<option value="${member.id}">${member.first_name} ${member.last_name} (${member.membership_number})</option>`;
+                        });
+                        $('#encrypt-member-select').html(memberSelectHtml);
                     }
                 }
             });
@@ -2170,52 +2213,115 @@ try {
             }
         }
 
-        // Encryption tester API trigger
+        // Outbound campaign tracker URL generator
         function generateSecureLink() {
             const url = $('#encrypt-target-url').val();
-            const params = $('#encrypt-params').val();
+            const memberId = $('#encrypt-member-select').val();
+            const staffId = $('#encrypt-staff-select').val();
+            const discountRate = $('#encrypt-discount-rate').val();
+            const promoCode = $('#encrypt-promo-code').val();
+
+            if (!url) {
+                showToast("Please enter a target destination URL.", true);
+                return;
+            }
 
             $.ajax({
                 url: 'admin_actions.php?action=generate_encrypted_link',
                 type: 'POST',
-                data: { target_url: url, params: params },
+                data: { 
+                    target_url: url, 
+                    member_id: memberId,
+                    staff_id: staffId,
+                    discount_rate: discountRate,
+                    promo_code: promoCode
+                },
                 success: function(response) {
                     if (response.success) {
-                        $('#encrypted-url-text').text(response.data.secured_url);
+                        const trackerUrl = window.location.origin + '/backend/api/click.php?token=' + response.data.token;
+                        $('#encrypted-url-text').text(trackerUrl);
                         $('#encryption-result').fadeIn();
-                        $('#decryption-result').hide();
+                        showToast("Campaign link generated successfully!");
+                        
+                        // Reset optional generator inputs
+                        $('#encrypt-discount-rate').val('');
+                        $('#encrypt-promo-code').val('');
+                        $('#encrypt-member-select').val('');
+                        $('#encrypt-staff-select').val('');
+                        
+                        loadCampaignLinks();
+                    } else {
+                        showToast(response.message, true);
                     }
+                },
+                error: function(xhr) {
+                    showToast(xhr.responseJSON?.message || "Error generating secure link.", true);
                 }
             });
         }
 
         function copyEncryptedUrl() {
             const text = $('#encrypted-url-text').text();
+            if (!text) return;
             navigator.clipboard.writeText(text);
             showToast("Copied to clipboard!");
         }
 
-        function testDecryptToken() {
-            const url = $('#encrypted-url-text').text();
-            const urlObj = new URL(url);
-            const token = urlObj.searchParams.get('token');
-
+        function loadCampaignLinks() {
             $.ajax({
-                url: 'admin_actions.php?action=decrypt_url_token',
-                type: 'POST',
-                data: { token: token },
+                url: 'admin_actions.php?action=get_campaign_links',
+                type: 'GET',
+                cache: false,
                 success: function(response) {
                     if (response.success) {
-                        $('#decrypted-json-text').text(JSON.stringify(response.data, null, 4));
-                        $('#decryption-result').fadeIn();
-                    } else {
-                        showToast(response.message, true);
+                        let html = '';
+                        response.data.forEach(c => {
+                            const customerName = c.member_id 
+                                ? `<strong>${c.first_name} ${c.last_name}</strong><br><small style="color:var(--accent-gold);">${c.membership_number}</small>`
+                                : `<span style="color:var(--text-muted);">General Campaign</span>`;
+                                
+                            const staffName = c.staff_name 
+                                ? `<strong>${c.staff_name}</strong><br><small style="color:var(--text-muted);">${c.staff_id}</small>`
+                                : `<span style="color:var(--text-muted);">None</span>`;
+                                
+                            const ratePromo = `Rate: <strong>${c.discount_rate || 'N/A'}</strong><br>Code: <strong>${c.promo_code || 'N/A'}</strong>`;
+                            
+                            const trackerUrl = window.location.origin + '/backend/api/click.php?token=' + c.token;
+
+                            html += `
+                                <tr>
+                                    <td><strong>${c.id}</strong></td>
+                                    <td><small>${c.created_at}</small></td>
+                                    <td><a href="${c.target_url}" target="_blank" style="color:var(--accent-gold); text-decoration:none; font-size:12px; word-break:break-all;">${c.target_url}</a></td>
+                                    <td>${customerName}</td>
+                                    <td>${staffName}</td>
+                                    <td>${ratePromo}</td>
+                                    <td><strong style="font-size:16px; color:#fff; text-shadow:0 0 10px rgba(255,255,255,0.2);">${c.click_count}</strong> hits</td>
+                                    <td>
+                                        <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px;" onclick="copySpecificUrl('${trackerUrl}')"><i class="fa-solid fa-copy"></i> Copy Link</button>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                        
+                        if ($.fn.DataTable.isDataTable('#campaignsTable')) {
+                            $('#campaignsTable').DataTable().destroy();
+                        }
+                        $('#campaigns-table-body').html(html);
+                        $('#campaignsTable').DataTable({
+                            "pageLength": 5,
+                            "ordering": true,
+                            "order": [[0, "desc"]],
+                            "destroy": true
+                        });
                     }
-                },
-                error: function(xhr) {
-                    showToast(xhr.responseJSON?.message || "Tampered token detected!", true);
                 }
             });
+        }
+
+        function copySpecificUrl(url) {
+            navigator.clipboard.writeText(url);
+            showToast("Tracker URL copied to clipboard!");
         }
 
         // Settings Form Submission
@@ -2750,10 +2856,13 @@ try {
 
                         // Populate referral dropdown in New Enrolment
                         let enrolSelectHtml = '<option value="">-- Choose Registered Staff Referrer --</option>';
+                        let encryptStaffHtml = '<option value="">-- No Staff Referrer --</option>';
                         globalStaffDirectory.forEach(st => {
                             enrolSelectHtml += `<option value="${st.staff_id}">${st.name} (${st.staff_id}) - ${st.department}</option>`;
+                            encryptStaffHtml += `<option value="${st.staff_id}">${st.name} (${st.staff_id}) - ${st.department}</option>`;
                         });
                         $('#enrol-staff-select').html(enrolSelectHtml);
+                        $('#encrypt-staff-select').html(encryptStaffHtml);
                     }
                 }
             });
