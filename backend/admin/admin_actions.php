@@ -1,8 +1,21 @@
 <?php
+session_start();
 require_once __DIR__ . '/../config/db_connection.php';
 
-// Access Control (In a real system, verify admin session. For now, allow requests for demo).
 $action = isset($_GET['action']) ? $_GET['action'] : '';
+
+// 1. Handle non-logged in public routes (e.g. login action itself)
+if ($action !== 'login') {
+    if (!isset($_SESSION['admin_user_id'])) {
+        sendJSONResponse(false, null, "Authentication required.", 401);
+    }
+}
+
+// 2. Access control check for Admin only actions
+$adminOnlyActions = ['save_settings', 'get_settings', 'get_users', 'add_user', 'toggle_user_status', 'admin_reset_password'];
+if (in_array($action, $adminOnlyActions) && $_SESSION['admin_role'] !== 'admin') {
+    sendJSONResponse(false, null, "Access denied. Admin privileges required.", 403);
+}
 
 switch ($action) {
     case 'enrol_member':
@@ -846,6 +859,171 @@ switch ($action) {
         }
 
         sendJSONResponse(true, $params, "Token decrypted successfully.");
+        break;
+
+    case 'login':
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            sendJSONResponse(false, null, "Method not allowed.", 405);
+        }
+
+        $username = isset($_POST['username']) ? trim($_POST['username']) : '';
+        $password = isset($_POST['password']) ? trim($_POST['password']) : '';
+
+        if (empty($username) || empty($password)) {
+            sendJSONResponse(false, null, "Username and password are required.", 400);
+        }
+
+        try {
+            $stmt = $pdo->prepare("SELECT * FROM admin_users WHERE username = ?");
+            $stmt->execute([$username]);
+            $user = $stmt->fetch();
+
+            if (!$user || !password_verify($password, $user['password_hash'])) {
+                sendJSONResponse(false, null, "Invalid username or password.", 401);
+            }
+
+            if ($user['status'] !== 'active') {
+                sendJSONResponse(false, null, "Your account is currently inactive. Contact Administrator.", 403);
+            }
+
+            // Set session variables
+            $_SESSION['admin_user_id'] = $user['id'];
+            $_SESSION['admin_username'] = $user['username'];
+            $_SESSION['admin_role'] = $user['role'];
+
+            sendJSONResponse(true, null, "Login successful.");
+        } catch (PDOException $e) {
+            sendJSONResponse(false, null, $e->getMessage(), 500);
+        }
+        break;
+
+    case 'get_users':
+        try {
+            $stmt = $pdo->query("SELECT id, username, role, status, created_at FROM admin_users ORDER BY id ASC");
+            $users = $stmt->fetchAll();
+            sendJSONResponse(true, $users, "Users loaded.");
+        } catch (PDOException $e) {
+            sendJSONResponse(false, null, $e->getMessage(), 500);
+        }
+        break;
+
+    case 'add_user':
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            sendJSONResponse(false, null, "Method not allowed.", 405);
+        }
+
+        $newUsername = isset($_POST['username']) ? trim($_POST['username']) : '';
+        $newPassword = isset($_POST['password']) ? trim($_POST['password']) : '';
+        $newRole = isset($_POST['role']) ? trim($_POST['role']) : 'counter';
+        $newStatus = isset($_POST['status']) ? trim($_POST['status']) : 'active';
+
+        if (empty($newUsername) || empty($newPassword)) {
+            sendJSONResponse(false, null, "Username and password are required.", 400);
+        }
+
+        if (!in_array($newRole, ['admin', 'counter']) || !in_array($newStatus, ['active', 'inactive'])) {
+            sendJSONResponse(false, null, "Invalid role or status selection.", 400);
+        }
+
+        try {
+            // Check duplicate username
+            $stmtCheck = $pdo->prepare("SELECT id FROM admin_users WHERE username = ?");
+            $stmtCheck->execute([$newUsername]);
+            if ($stmtCheck->fetch()) {
+                sendJSONResponse(false, null, "Username already exists.", 409);
+            }
+
+            $passwordHash = password_hash($newPassword, PASSWORD_BCRYPT);
+            $stmt = $pdo->prepare("INSERT INTO admin_users (username, password_hash, role, status) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$newUsername, $passwordHash, $newRole, $newStatus]);
+            sendJSONResponse(true, null, "User account created successfully.");
+        } catch (PDOException $e) {
+            sendJSONResponse(false, null, $e->getMessage(), 500);
+        }
+        break;
+
+    case 'toggle_user_status':
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            sendJSONResponse(false, null, "Method not allowed.", 405);
+        }
+
+        $userId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+        $currentStatus = isset($_POST['current_status']) ? trim($_POST['current_status']) : '';
+
+        if ($userId === (int)$_SESSION['admin_user_id']) {
+            sendJSONResponse(false, null, "You cannot deactivate your own account.", 400);
+        }
+
+        $newStatus = $currentStatus === 'active' ? 'inactive' : 'active';
+
+        try {
+            $stmt = $pdo->prepare("UPDATE admin_users SET status = ? WHERE id = ?");
+            $stmt->execute([$newStatus, $userId]);
+            sendJSONResponse(true, null, "User status updated to " . $newStatus . ".");
+        } catch (PDOException $e) {
+            sendJSONResponse(false, null, $e->getMessage(), 500);
+        }
+        break;
+
+    case 'admin_reset_password':
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            sendJSONResponse(false, null, "Method not allowed.", 405);
+        }
+
+        $userId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+        $newPassword = isset($_POST['new_password']) ? trim($_POST['new_password']) : '';
+
+        if (empty($newPassword)) {
+            sendJSONResponse(false, null, "New password is required.", 400);
+        }
+
+        try {
+            $passwordHash = password_hash($newPassword, PASSWORD_BCRYPT);
+            $stmt = $pdo->prepare("UPDATE admin_users SET password_hash = ? WHERE id = ?");
+            $stmt->execute([$passwordHash, $userId]);
+            sendJSONResponse(true, null, "User password reset successfully.");
+        } catch (PDOException $e) {
+            sendJSONResponse(false, null, $e->getMessage(), 500);
+        }
+        break;
+
+    case 'change_self_password':
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            sendJSONResponse(false, null, "Method not allowed.", 405);
+        }
+
+        $currentPassword = isset($_POST['current_password']) ? trim($_POST['current_password']) : '';
+        $newPassword = isset($_POST['new_password']) ? trim($_POST['new_password']) : '';
+        $confirmPassword = isset($_POST['confirm_password']) ? trim($_POST['confirm_password']) : '';
+
+        if (empty($currentPassword) || empty($newPassword) || empty($confirmPassword)) {
+            sendJSONResponse(false, null, "All password fields are required.", 400);
+        }
+
+        if ($newPassword !== $confirmPassword) {
+            sendJSONResponse(false, null, "New password and confirmation do not match.", 400);
+        }
+
+        $userId = $_SESSION['admin_user_id'];
+
+        try {
+            // Verify current password
+            $stmt = $pdo->prepare("SELECT password_hash FROM admin_users WHERE id = ?");
+            $stmt->execute([$userId]);
+            $user = $stmt->fetch();
+
+            if (!$user || !password_verify($currentPassword, $user['password_hash'])) {
+                sendJSONResponse(false, null, "Incorrect current password.", 401);
+            }
+
+            $newPasswordHash = password_hash($newPassword, PASSWORD_BCRYPT);
+            $stmtUpdate = $pdo->prepare("UPDATE admin_users SET password_hash = ? WHERE id = ?");
+            $stmtUpdate->execute([$newPasswordHash, $userId]);
+
+            sendJSONResponse(true, null, "Your password has been changed successfully.");
+        } catch (PDOException $e) {
+            sendJSONResponse(false, null, $e->getMessage(), 500);
+        }
         break;
 
     default:

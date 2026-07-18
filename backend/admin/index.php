@@ -1,4 +1,13 @@
 <?php
+session_start();
+if (!isset($_SESSION['admin_user_id'])) {
+    header('Location: login.php');
+    exit;
+}
+
+$userRole = $_SESSION['admin_role'] ?? 'counter';
+$currentUsername = $_SESSION['admin_username'] ?? 'User';
+
 require_once __DIR__ . '/../config/db_connection.php';
 
 // Fetch settings
@@ -601,9 +610,14 @@ try {
             <li class="menu-item" data-view="security">
                 <a href="#"><i class="fa-solid fa-shield-halved"></i> Link Encryption</a>
             </li>
+            <?php if ($userRole === 'admin'): ?>
+            <li class="menu-item" data-view="users">
+                <a href="#"><i class="fa-solid fa-users-gear"></i> User Management</a>
+            </li>
             <li class="menu-item" data-view="settings">
                 <a href="#"><i class="fa-solid fa-gear"></i> Settings</a>
             </li>
+            <?php endif; ?>
         </ul>
     </div>
 
@@ -616,9 +630,12 @@ try {
                 <h2 id="view-title">Dashboard Overview</h2>
                 <p id="view-subtitle">Real-time statistics of loyalty programs</p>
             </div>
-            <div style="display: flex; gap: 10px;">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <span style="color: var(--text-muted); font-size: 13px; font-weight: 500; margin-right: 10px;"><i class="fa-solid fa-circle-user"></i> Hello, <strong><?php echo htmlspecialchars($currentUsername); ?></strong> (<span style="text-transform: capitalize;"><?php echo htmlspecialchars($userRole); ?></span>)</span>
+                <button class="btn btn-secondary" onclick="openChangePasswordModal()"><i class="fa-solid fa-key"></i> Change Password</button>
                 <button class="btn btn-secondary" id="theme-toggle-btn" onclick="toggleTheme()"><i class="fa-solid fa-moon"></i> Dark Mode</button>
                 <button class="btn btn-secondary" onclick="loadAllData()"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button>
+                <a href="logout.php" class="btn btn-secondary" style="border-color: var(--danger); color: var(--danger); text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 5px;"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
             </div>
         </div>
 
@@ -918,6 +935,7 @@ try {
             </div>
         </div>
 
+        <?php if ($userRole === 'admin'): ?>
         <!-- Settings View Pane -->
         <div id="view-settings" class="view-pane">
             <form id="settingsForm">
@@ -1018,6 +1036,70 @@ try {
                 </div>
             </form>
         </div>
+
+        <!-- User Management View Pane (Admin Only) -->
+        <div id="view-users" class="view-pane">
+            <div style="display: grid; grid-template-columns: 1fr 1.8fr; gap: 25px;">
+                <!-- Add User Form -->
+                <div>
+                    <div class="form-section">
+                        <div class="section-title"><i class="fa-solid fa-user-plus"></i> Create User Account</div>
+                        <form id="addUserForm">
+                            <div class="form-group" style="margin-bottom: 15px;">
+                                <label>Username *</label>
+                                <input type="text" name="username" placeholder="e.g. counter_agent1" required class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.1); border:1px solid var(--border-color); border-radius:8px; color:#fff;">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 15px;">
+                                <label>Initial Password *</label>
+                                <input type="password" name="password" placeholder="Enter password" required autocomplete="new-password" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.1); border:1px solid var(--border-color); border-radius:8px; color:#fff;">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 15px;">
+                                <label>Access Role *</label>
+                                <select name="role" required style="width:100%; padding:10px; background:rgba(0,0,0,0.1); border:1px solid var(--border-color); border-radius:8px; color:#fff;">
+                                    <option value="counter" selected>Counter User (Restricted settings)</option>
+                                    <option value="admin">Admin User (Full access)</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 15px;">
+                                <label>Account Status *</label>
+                                <select name="status" required style="width:100%; padding:10px; background:rgba(0,0,0,0.1); border:1px solid var(--border-color); border-radius:8px; color:#fff;">
+                                    <option value="active" selected>Active</option>
+                                    <option value="inactive">Inactive</option>
+                                </select>
+                            </div>
+                            <div style="margin-top: 20px;">
+                                <button type="submit" class="btn" style="width: 100%;"><i class="fa-solid fa-save"></i> Create User</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Users list Table -->
+                <div>
+                    <div class="form-section">
+                        <div class="section-title"><i class="fa-solid fa-users"></i> System Accounts</div>
+                        <div class="table-responsive">
+                            <table id="usersTable" class="display" style="width: 100%;">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Username</th>
+                                        <th>Role</th>
+                                        <th>Status</th>
+                                        <th>Created At</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="users-table-body">
+                                    <!-- Loaded via AJAX -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
 
     </div>
 
@@ -1343,6 +1425,56 @@ try {
             </div>
         </div>
     </div>
+
+    <!-- Admin Reset Password Modal (Admin Only) -->
+    <?php if ($userRole === 'admin'): ?>
+    <div id="adminResetPasswordModal" class="modal" style="z-index: 10001;">
+        <div class="modal-content" style="width: 400px; max-width: 90%;">
+            <h3 style="color: var(--accent-gold); margin-bottom: 20px;"><i class="fa-solid fa-key"></i> Reset User Password</h3>
+            <form id="adminResetPasswordForm">
+                <input type="hidden" name="id" id="admin-reset-user-id">
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Username</label>
+                    <input type="text" id="admin-reset-username" readonly style="background-color: rgba(255,255,255,0.05); color:#9ca3af; width:100%; padding:10px; border:1px solid var(--border-color); border-radius:8px;">
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label>New Password *</label>
+                    <input type="password" name="new_password" required placeholder="Enter new password" autocomplete="new-password" style="width:100%; padding:10px; background:rgba(0,0,0,0.1); border:1px solid var(--border-color); border-radius:8px; color:#fff;">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn btn-secondary" onclick="$('#adminResetPasswordModal').css('display', 'none')">Cancel</button>
+                    <button type="submit" class="btn" style="background: var(--success);">Reset Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Change Self Password Modal (All Users) -->
+    <div id="changePasswordModal" class="modal" style="z-index: 10001;">
+        <div class="modal-content" style="width: 420px; max-width: 90%;">
+            <h3 style="color: var(--accent-gold); margin-bottom: 20px;"><i class="fa-solid fa-key"></i> Change Your Password</h3>
+            <form id="changePasswordForm">
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Current Password *</label>
+                    <input type="password" name="current_password" required placeholder="Enter current password" autocomplete="current-password" style="width:100%; padding:10px; background:rgba(0,0,0,0.1); border:1px solid var(--border-color); border-radius:8px; color:#fff;">
+                </div>
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>New Password *</label>
+                    <input type="password" name="new_password" id="new-self-password" required placeholder="Enter new password" autocomplete="new-password" style="width:100%; padding:10px; background:rgba(0,0,0,0.1); border:1px solid var(--border-color); border-radius:8px; color:#fff;">
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label>Confirm New Password *</label>
+                    <input type="password" name="confirm_password" required placeholder="Confirm new password" autocomplete="new-password" style="width:100%; padding:10px; background:rgba(0,0,0,0.1); border:1px solid var(--border-color); border-radius:8px; color:#fff;">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn btn-secondary" onclick="$('#changePasswordModal').css('display', 'none')">Cancel</button>
+                    <button type="submit" class="btn" style="background: var(--success);">Update Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Toast Notification -->
     <div class="toast" id="adminToast">
         <i class="fa-solid fa-circle-check" style="color: var(--success); font-size: 20px;"></i>
@@ -1372,6 +1504,7 @@ try {
                 redemptions: { title: 'Redemption Claims', subtitle: 'Verify and process K Reward claims' },
                 incentives: { title: 'Staff Incentives Dashboard', subtitle: 'Manage commissions for Silver card enrolments' },
                 security: { title: 'Outbound URL Protection', subtitle: 'Secure campaign links with cryptographic tokens' },
+                users: { title: 'User Management', subtitle: 'Create, status toggle and password reset system accounts' },
                 settings: { title: 'System Settings', subtitle: 'Configure timezone, currency, and points calculations' }
             };
 
@@ -1710,13 +1843,14 @@ try {
                 }
             });
 
-            // Load settings
-            $.ajax({
-                url: 'admin_actions.php?action=get_settings',
-                type: 'GET',
-                cache: false,
-                success: function(response) {
-                    if (response.success) {
+            // Load settings (Admin Only)
+            if ($('#settings-timezone').length > 0) {
+                $.ajax({
+                    url: 'admin_actions.php?action=get_settings',
+                    type: 'GET',
+                    cache: false,
+                    success: function(response) {
+                        if (response.success) {
                         const settings = response.data;
                         $('#settings-timezone').val(settings.timezone || 'Asia/Bahrain');
                         $('#settings-currency').val(settings.currency || 'BHD');
@@ -1786,9 +1920,15 @@ try {
                                 addVoucherRow(v.id || '', v.name || '', v.points || '', v.category || 'meals', v.description || '');
                             });
                         }
+                        }
                     }
-                }
-            });
+                });
+            }
+
+            // Load users list (Admin Only)
+            if ($('#usersTable').length > 0) {
+                loadUsersList();
+            }
         }
 
         // Open spending modal
@@ -2823,6 +2963,157 @@ try {
                 $('#theme-toggle-btn').html('<i class="fa-solid fa-sun"></i> Light Mode');
             }
         }
+
+        // Load system users list (Admin Only)
+        function loadUsersList() {
+            $.ajax({
+                url: 'admin_actions.php?action=get_users',
+                type: 'GET',
+                cache: false,
+                success: function(response) {
+                    if (response.success) {
+                        let html = '';
+                        const currentUsername = <?php echo json_encode($currentUsername); ?>;
+                        response.data.forEach(user => {
+                            const isSelf = user.username === currentUsername;
+                            const statusBadge = user.status === 'active' 
+                                ? `<span class="badge badge-active">Active</span>`
+                                : `<span class="badge badge-expired">Inactive</span>`;
+                                
+                            const toggleBtn = isSelf 
+                                ? `<button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; opacity: 0.5;" disabled>Toggle Status</button>`
+                                : `<button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="toggleUserStatus(${user.id}, '${user.status}')">Toggle Status</button>`;
+                                
+                            const resetBtn = `<button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="adminResetUserPassword(${user.id}, '${user.username}')"><i class="fa-solid fa-key"></i> Reset Pass</button>`;
+
+                            html += `
+                                <tr>
+                                    <td><strong>${user.id}</strong></td>
+                                    <td>${user.username}</td>
+                                    <td><span style="text-transform: capitalize;">${user.role}</span></td>
+                                    <td>${statusBadge}</td>
+                                    <td>${user.created_at}</td>
+                                    <td>
+                                        <div style="display:flex; gap:5px;">
+                                            ${toggleBtn}
+                                            ${resetBtn}
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                        
+                        if ($.fn.DataTable.isDataTable('#usersTable')) {
+                            $('#usersTable').DataTable().destroy();
+                        }
+                        $('#users-table-body').html(html);
+                        $('#usersTable').DataTable({
+                            "pageLength": 10,
+                            "ordering": true,
+                            "destroy": true
+                        });
+                    }
+                }
+            });
+        }
+
+        // Add User Account (Admin Only)
+        $('#addUserForm').on('submit', function(e) {
+            e.preventDefault();
+            $.ajax({
+                url: 'admin_actions.php?action=add_user',
+                type: 'POST',
+                data: $(this).serialize(),
+                success: function(response) {
+                    if (response.success) {
+                        showToast("User account created successfully!");
+                        $('#addUserForm')[0].reset();
+                        loadUsersList();
+                    } else {
+                        showToast(response.message, true);
+                    }
+                },
+                error: function(xhr) {
+                    showToast(xhr.responseJSON?.message || "Error creating user account.", true);
+                }
+            });
+        });
+
+        // Toggle User Status (Admin Only)
+        function toggleUserStatus(userId, currentStatus) {
+            showCustomConfirm("Are you sure you want to change this user's active/inactive status?", function() {
+                $.ajax({
+                    url: 'admin_actions.php?action=toggle_user_status',
+                    type: 'POST',
+                    data: { id: userId, current_status: currentStatus },
+                    success: function(response) {
+                        if (response.success) {
+                            showToast(response.message);
+                            loadUsersList();
+                        } else {
+                            showToast(response.message, true);
+                        }
+                    },
+                    error: function(xhr) {
+                        showToast(xhr.responseJSON?.message || "Error updating user status.", true);
+                    }
+                });
+            });
+        }
+
+        // Admin reset user's password (Admin Only)
+        function adminResetUserPassword(userId, username) {
+            $('#admin-reset-user-id').val(userId);
+            $('#admin-reset-username').val(username);
+            $('#adminResetPasswordForm')[0].reset();
+            $('#adminResetPasswordModal').css('display', 'flex');
+        }
+
+        $('#adminResetPasswordForm').on('submit', function(e) {
+            e.preventDefault();
+            $.ajax({
+                url: 'admin_actions.php?action=admin_reset_password',
+                type: 'POST',
+                data: $(this).serialize(),
+                success: function(response) {
+                    if (response.success) {
+                        showToast("User password has been reset successfully.");
+                        $('#adminResetPasswordModal').css('display', 'none');
+                    } else {
+                        showToast(response.message, true);
+                    }
+                },
+                error: function(xhr) {
+                    showToast(xhr.responseJSON?.message || "Error resetting user password.", true);
+                }
+            });
+        });
+
+        // Change own password
+        function openChangePasswordModal() {
+            $('#changePasswordForm')[0].reset();
+            $('#changePasswordModal').css('display', 'flex');
+        }
+
+        $('#changePasswordForm').on('submit', function(e) {
+            e.preventDefault();
+            $.ajax({
+                url: 'admin_actions.php?action=change_self_password',
+                type: 'POST',
+                data: $(this).serialize(),
+                success: function(response) {
+                    if (response.success) {
+                        showToast("Your password was updated successfully!");
+                        $('#changePasswordModal').css('display', 'none');
+                    } else {
+                        showToast(response.message, true);
+                    }
+                },
+                error: function(xhr) {
+                    showToast(xhr.responseJSON?.message || "Error changing password.", true);
+                }
+            });
+        });
     </script>
 </body>
 </html>
