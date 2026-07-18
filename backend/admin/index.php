@@ -894,7 +894,8 @@ try {
                     </table>
                 </div>
             </div>
-                <!-- Link Encryption View Pane -->
+        </div>
+        <!-- Link Encryption View Pane -->
         <div id="view-security" class="view-pane">
             <div style="display: grid; grid-template-columns: 1fr; gap: 25px;">
                 <!-- Link Generator Card -->
@@ -911,14 +912,14 @@ try {
                         </div>
                         <div class="form-group">
                             <label>Select Customer (Member)</label>
-                            <select id="encrypt-member-select" style="width:100%; padding:10px; background:rgba(0,0,0,0.1); border:1px solid var(--border-color); border-radius:8px; color:#fff;">
+                            <select id="encrypt-member-select" style="width:100%;">
                                 <option value="">-- No Customer Link / General Campaign --</option>
                                 <!-- Populated dynamically from loaded members -->
                             </select>
                         </div>
                         <div class="form-group">
                             <label>Select Staff Referrer</label>
-                            <select id="encrypt-staff-select" style="width:100%; padding:10px; background:rgba(0,0,0,0.1); border:1px solid var(--border-color); border-radius:8px; color:#fff;">
+                            <select id="encrypt-staff-select" style="width:100%;">
                                 <option value="">-- No Staff Referrer --</option>
                                 <!-- Populated dynamically from staff directory -->
                             </select>
@@ -970,7 +971,7 @@ try {
                     </div>
                 </div>
             </div>
-        </div>  </div>
+        </div>
 
         <?php if ($userRole === 'admin'): ?>
         <!-- Settings View Pane -->
@@ -1084,22 +1085,22 @@ try {
                         <form id="addUserForm">
                             <div class="form-group" style="margin-bottom: 15px;">
                                 <label>Username *</label>
-                                <input type="text" name="username" placeholder="e.g. counter_agent1" required class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.1); border:1px solid var(--border-color); border-radius:8px; color:#fff;">
+                                <input type="text" name="username" placeholder="e.g. counter_agent1" required class="form-control" style="width:100%;">
                             </div>
                             <div class="form-group" style="margin-bottom: 15px;">
                                 <label>Initial Password *</label>
-                                <input type="password" name="password" placeholder="Enter password" required autocomplete="new-password" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.1); border:1px solid var(--border-color); border-radius:8px; color:#fff;">
+                                <input type="password" name="password" placeholder="Enter password" required autocomplete="new-password" class="form-control" style="width:100%;">
                             </div>
                             <div class="form-group" style="margin-bottom: 15px;">
                                 <label>Access Role *</label>
-                                <select name="role" required style="width:100%; padding:10px; background:rgba(0,0,0,0.1); border:1px solid var(--border-color); border-radius:8px; color:#fff;">
+                                <select name="role" required style="width:100%;">
                                     <option value="counter" selected>Counter User (Restricted settings)</option>
                                     <option value="admin">Admin User (Full access)</option>
                                 </select>
                             </div>
                             <div class="form-group" style="margin-bottom: 15px;">
                                 <label>Account Status *</label>
-                                <select name="status" required style="width:100%; padding:10px; background:rgba(0,0,0,0.1); border:1px solid var(--border-color); border-radius:8px; color:#fff;">
+                                <select name="status" required style="width:100%;">
                                     <option value="active" selected>Active</option>
                                     <option value="inactive">Inactive</option>
                                 </select>
@@ -1472,11 +1473,11 @@ try {
                 <input type="hidden" name="id" id="admin-reset-user-id">
                 <div class="form-group" style="margin-bottom: 15px;">
                     <label>Username</label>
-                    <input type="text" id="admin-reset-username" readonly style="background-color: rgba(255,255,255,0.05); color:#9ca3af; width:100%; padding:10px; border:1px solid var(--border-color); border-radius:8px;">
+                    <input type="text" id="admin-reset-username" readonly style="width:100%; opacity:0.6;">
                 </div>
                 <div class="form-group" style="margin-bottom: 20px;">
                     <label>New Password *</label>
-                    <input type="password" name="new_password" required placeholder="Enter new password" autocomplete="new-password" style="width:100%; padding:10px; background:rgba(0,0,0,0.1); border:1px solid var(--border-color); border-radius:8px; color:#fff;">
+                    <input type="password" name="new_password" required placeholder="Enter new password" autocomplete="new-password" style="width:100%;">
                 </div>
                 <div style="display: flex; justify-content: flex-end; gap: 10px;">
                     <button type="button" class="btn btn-secondary" onclick="$('#adminResetPasswordModal').css('display', 'none')">Cancel</button>
@@ -1494,15 +1495,15 @@ try {
             <form id="changePasswordForm">
                 <div class="form-group" style="margin-bottom: 15px;">
                     <label>Current Password *</label>
-                    <input type="password" name="current_password" required placeholder="Enter current password" autocomplete="current-password" style="width:100%; padding:10px; background:rgba(0,0,0,0.1); border:1px solid var(--border-color); border-radius:8px; color:#fff;">
+                    <input type="password" name="current_password" required placeholder="Enter current password" autocomplete="current-password" style="width:100%;">
                 </div>
                 <div class="form-group" style="margin-bottom: 15px;">
                     <label>New Password *</label>
-                    <input type="password" name="new_password" id="new-self-password" required placeholder="Enter new password" autocomplete="new-password" style="width:100%; padding:10px; background:rgba(0,0,0,0.1); border:1px solid var(--border-color); border-radius:8px; color:#fff;">
+                    <input type="password" name="new_password" id="new-self-password" required placeholder="Enter new password" autocomplete="new-password" style="width:100%;">
                 </div>
                 <div class="form-group" style="margin-bottom: 20px;">
                     <label>Confirm New Password *</label>
-                    <input type="password" name="confirm_password" required placeholder="Confirm new password" autocomplete="new-password" style="width:100%; padding:10px; background:rgba(0,0,0,0.1); border:1px solid var(--border-color); border-radius:8px; color:#fff;">
+                    <input type="password" name="confirm_password" required placeholder="Confirm new password" autocomplete="new-password" style="width:100%;">
                 </div>
                 <div style="display: flex; justify-content: flex-end; gap: 10px;">
                     <button type="button" class="btn btn-secondary" onclick="$('#changePasswordModal').css('display', 'none')">Cancel</button>
@@ -1547,6 +1548,10 @@ try {
 
             $('#view-title').text(titles[view].title);
             $('#view-subtitle').text(titles[view].subtitle);
+
+            if (view === 'security') {
+                loadCampaignLinks();
+            }
         });
 
         // Enrolment form select handlers
@@ -1972,6 +1977,8 @@ try {
             if ($('#usersTable').length > 0) {
                 loadUsersList();
             }
+
+            loadCampaignLinks();
         }
 
         // Open spending modal
@@ -2260,68 +2267,122 @@ try {
             });
         }
 
-        function copyEncryptedUrl() {
-            const text = $('#encrypted-url-text').text();
+        function copyTextToClipboard(text) {
             if (!text) return;
-            navigator.clipboard.writeText(text);
-            showToast("Copied to clipboard!");
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function() {
+                    showToast("Copied to clipboard!");
+                }, function(err) {
+                    fallbackCopyTextToClipboard(text);
+                });
+            } else {
+                fallbackCopyTextToClipboard(text);
+            }
         }
 
-        function loadCampaignLinks() {
-            $.ajax({
-                url: 'admin_actions.php?action=get_campaign_links',
-                type: 'GET',
-                cache: false,
-                success: function(response) {
-                    if (response.success) {
-                        let html = '';
-                        response.data.forEach(c => {
-                            const customerName = c.member_id 
-                                ? `<strong>${c.first_name} ${c.last_name}</strong><br><small style="color:var(--accent-gold);">${c.membership_number}</small>`
-                                : `<span style="color:var(--text-muted);">General Campaign</span>`;
-                                
-                            const staffName = c.staff_name 
-                                ? `<strong>${c.staff_name}</strong><br><small style="color:var(--text-muted);">${c.staff_id}</small>`
-                                : `<span style="color:var(--text-muted);">None</span>`;
-                                
-                            const ratePromo = `Rate: <strong>${c.discount_rate || 'N/A'}</strong><br>Code: <strong>${c.promo_code || 'N/A'}</strong>`;
-                            
-                            const trackerUrl = window.location.origin + '/backend/api/click.php?token=' + c.token;
-
-                            html += `
-                                <tr>
-                                    <td><strong>${c.id}</strong></td>
-                                    <td><small>${c.created_at}</small></td>
-                                    <td><a href="${c.target_url}" target="_blank" style="color:var(--accent-gold); text-decoration:none; font-size:12px; word-break:break-all;">${c.target_url}</a></td>
-                                    <td>${customerName}</td>
-                                    <td>${staffName}</td>
-                                    <td>${ratePromo}</td>
-                                    <td><strong style="font-size:16px; color:#fff; text-shadow:0 0 10px rgba(255,255,255,0.2);">${c.click_count}</strong> hits</td>
-                                    <td>
-                                        <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px;" onclick="copySpecificUrl('${trackerUrl}')"><i class="fa-solid fa-copy"></i> Copy Link</button>
-                                    </td>
-                                </tr>
-                            `;
-                        });
-                        
-                        if ($.fn.DataTable.isDataTable('#campaignsTable')) {
-                            $('#campaignsTable').DataTable().destroy();
-                        }
-                        $('#campaigns-table-body').html(html);
-                        $('#campaignsTable').DataTable({
-                            "pageLength": 5,
-                            "ordering": true,
-                            "order": [[0, "desc"]],
-                            "destroy": true
-                        });
-                    }
+        function fallbackCopyTextToClipboard(text) {
+            var textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                var successful = document.execCommand('copy');
+                if (successful) {
+                    showToast("Copied to clipboard!");
+                } else {
+                    showToast("Failed to copy link.", true);
                 }
-            });
+            } catch (err) {
+                showToast("Failed to copy link.", true);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function copyEncryptedUrl() {
+            const text = $('#encrypted-url-text').text();
+            copyTextToClipboard(text);
+        }
+
+        let campaignsTable = null;
+
+        function loadCampaignLinks() {
+            if ($.fn.DataTable.isDataTable('#campaignsTable')) {
+                $('#campaignsTable').DataTable().ajax.reload(null, false);
+            } else {
+                campaignsTable = $('#campaignsTable').DataTable({
+                    ajax: {
+                        url: 'admin_actions.php?action=get_campaign_links',
+                        dataSrc: 'data'
+                    },
+                    columns: [
+                        { 
+                            data: 'id', 
+                            render: function(data) { 
+                                return `<strong>${data}</strong>`; 
+                            } 
+                        },
+                        { 
+                            data: 'created_at', 
+                            render: function(data) { 
+                                return `<small>${data}</small>`; 
+                            } 
+                        },
+                        { 
+                            data: 'target_url', 
+                            render: function(data) {
+                                return `<a href="${data}" target="_blank" style="color:var(--accent-gold); text-decoration:none; font-size:12px; word-break:break-all;">${data}</a>`;
+                            }
+                        },
+                        { 
+                            data: null, 
+                            render: function(row) {
+                                return row.member_id 
+                                    ? `<strong>${row.first_name} ${row.last_name}</strong><br><small style="color:var(--accent-gold);">${row.membership_number}</small>`
+                                    : `<span style="color:var(--text-muted);">General Campaign</span>`;
+                            }
+                        },
+                        { 
+                            data: null, 
+                            render: function(row) {
+                                return row.staff_name 
+                                    ? `<strong>${row.staff_name}</strong><br><small style="color:var(--text-muted);">${row.staff_id}</small>`
+                                    : `<span style="color:var(--text-muted);">None</span>`;
+                            }
+                        },
+                        { 
+                            data: null, 
+                            render: function(row) {
+                                return `Rate: <strong>${row.discount_rate || 'N/A'}</strong><br>Code: <strong>${row.promo_code || 'N/A'}</strong>`;
+                            }
+                        },
+                        { 
+                            data: 'click_count', 
+                            render: function(data) {
+                                return `<strong style="font-size:16px; color: var(--text-main);">${data}</strong> hits`;
+                            }
+                        },
+                        { 
+                            data: null, 
+                            orderable: false, 
+                            render: function(row) {
+                                const trackerUrl = window.location.origin + '/backend/api/click.php?token=' + row.token;
+                                return `<button class="btn btn-secondary" style="padding:4px 8px; font-size:11px;" onclick="copySpecificUrl('${trackerUrl}')"><i class="fa-solid fa-copy"></i> Copy Link</button>`;
+                            }
+                        }
+                    ],
+                    pageLength: 5,
+                    ordering: true,
+                    order: [[0, "desc"]]
+                });
+            }
         }
 
         function copySpecificUrl(url) {
-            navigator.clipboard.writeText(url);
-            showToast("Tracker URL copied to clipboard!");
+            copyTextToClipboard(url);
         }
 
         // Settings Form Submission
