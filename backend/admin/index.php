@@ -844,8 +844,8 @@ try {
             <div class="form-section">
                 <div class="section-title"><i class="fa-solid fa-clipboard-list"></i> Booker Point Redemptions</div>
                 <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 14px;">Review and approve/reject point redemption claims requested from the mobile app by bookers.</p>
-                <div class="table-container">
-                    <table>
+                <div class="table-responsive">
+                    <table id="redemptionsTable" class="display" style="width:100%;">
                         <thead>
                             <tr>
                                 <th>Req ID</th>
@@ -1552,6 +1552,9 @@ try {
             if (view === 'security') {
                 loadCampaignLinks();
             }
+            if (view === 'redemptions') {
+                loadRedemptions();
+            }
         });
 
         // Enrolment form select handlers
@@ -1817,44 +1820,8 @@ try {
                 }
             });
 
-            // Get redemptions
-            $.ajax({
-                url: 'admin_actions.php?action=get_redemptions',
-                type: 'GET',
-                cache: false,
-                success: function(response) {
-                    if (response.success) {
-                        const redemptions = response.data;
-                        let html = '';
-                        let pendingCount = 0;
-
-                        redemptions.forEach(req => {
-                            if (req.status === 'Pending') pendingCount++;
-                            
-                            html += `
-                                <tr>
-                                    <td>#${req.id}</td>
-                                    <td><strong style="color:var(--accent-gold);">${req.membership_number}</strong></td>
-                                    <td>${req.first_name} ${req.last_name}</td>
-                                    <td>${req.award_title}</td>
-                                    <td><strong style="color:var(--text-main);">${req.points_cost} Pts</strong></td>
-                                    <td>${req.created_at}</td>
-                                    <td><span class="badge ${req.status === 'Approved' ? 'badge-active' : (req.status === 'Pending' ? 'badge-pending' : 'badge-expired')}">${req.status}</span></td>
-                                    <td>
-                                        ${req.status === 'Pending' ? 
-                                            `<button class="btn" style="padding:6px 12px; font-size:12px; background:var(--success);" onclick="processRedemption(${req.id}, 'Approved')"><i class="fa-solid fa-check"></i> Approve</button>
-                                             <button class="btn btn-danger" style="padding:6px 12px; font-size:12px;" onclick="processRedemption(${req.id}, 'Rejected')"><i class="fa-solid fa-xmark"></i> Reject</button>` : 
-                                            `<span style="color:var(--text-muted); font-size:12px;">Processed by ${req.approved_by}</span>`
-                                        }
-                                    </td>
-                                </tr>
-                            `;
-                        });
-                        $('#stat-redemptions-count').text(pendingCount);
-                        $('#redemptions-table-body').html(html);
-                    }
-                }
-            });
+            // Get redemptions — standalone function handles this
+            loadRedemptions();
 
             // Get incentives & reports
             $.ajax({
@@ -1979,6 +1946,7 @@ try {
             }
 
             loadCampaignLinks();
+            loadRedemptions();
         }
 
         // Open spending modal
@@ -2200,11 +2168,11 @@ try {
                     });
                 });
             } else if (status === 'Approved') {
-                // Find redemption details from the table row
-                const row = $(`#redemptions-table-body td:contains(#${id})`).closest('tr');
-                const guestName = row.find('td:nth-child(3)').text();
-                const awardClaimed = row.find('td:nth-child(4)').text();
-                const pointsCost = row.find('td:nth-child(5)').text();
+                // Find redemption details from the DataTable row using data attributes
+                const row = $(`#redemptionsTable tbody tr[data-id="${id}"]`);
+                const guestName  = row.attr('data-name') || '';
+                const awardClaimed = row.attr('data-award') || '';
+                const pointsCost   = row.attr('data-points') || '';
                 
                 $('#approve-request-id').val(id);
                 $('#approve-guest-name').val(guestName);
@@ -2218,6 +2186,62 @@ try {
                 
                 $('#approveRedemptionModal').css('display', 'flex');
             }
+        }
+
+        let redemptionsTable = null;
+
+        function loadRedemptions() {
+            $.ajax({
+                url: 'admin_actions.php?action=get_redemptions',
+                type: 'GET',
+                cache: false,
+                success: function(response) {
+                    if (response.success) {
+                        const redemptions = response.data;
+                        let html = '';
+                        let pendingCount = 0;
+
+                        redemptions.forEach(req => {
+                            if (req.status === 'Pending') pendingCount++;
+
+                            const statusBadge = `<span class="badge ${req.status === 'Approved' ? 'badge-active' : (req.status === 'Pending' ? 'badge-pending' : 'badge-expired')}">${req.status}</span>`;
+                            const actionBtns = req.status === 'Pending'
+                                ? `<button class="btn" style="padding:6px 12px; font-size:12px; background:var(--success);" onclick="processRedemption(${req.id}, 'Approved')"><i class="fa-solid fa-check"></i> Approve</button>
+                                   <button class="btn btn-danger" style="padding:6px 12px; font-size:12px;" onclick="processRedemption(${req.id}, 'Rejected')"><i class="fa-solid fa-xmark"></i> Reject</button>`
+                                : `<span style="color:var(--text-muted); font-size:12px;">Processed by ${req.approved_by || '—'}</span>`;
+
+                            html += `
+                                <tr data-id="${req.id}" data-name="${req.first_name} ${req.last_name}" data-award="${req.award_title}" data-points="${req.points_cost} Pts">
+                                    <td><strong>#${req.id}</strong></td>
+                                    <td><strong style="color:var(--accent-gold);">${req.membership_number}</strong></td>
+                                    <td>${req.first_name} ${req.last_name}</td>
+                                    <td>${req.award_title}</td>
+                                    <td><strong style="color:var(--text-main);">${req.points_cost} Pts</strong></td>
+                                    <td><small>${req.created_at}</small></td>
+                                    <td>${statusBadge}</td>
+                                    <td>${actionBtns}</td>
+                                </tr>
+                            `;
+                        });
+
+                        $('#stat-redemptions-count').text(pendingCount);
+
+                        if ($.fn.DataTable.isDataTable('#redemptionsTable')) {
+                            $('#redemptionsTable').DataTable().destroy();
+                        }
+                        $('#redemptions-table-body').html(html);
+                        redemptionsTable = $('#redemptionsTable').DataTable({
+                            pageLength: 10,
+                            ordering: true,
+                            order: [[0, 'desc']],
+                            language: {
+                                search: 'Filter Redemptions:',
+                                emptyTable: 'No redemption requests found.'
+                            }
+                        });
+                    }
+                }
+            });
         }
 
         // Outbound campaign tracker URL generator
