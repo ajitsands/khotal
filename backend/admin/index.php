@@ -875,8 +875,8 @@ try {
                 </div>
                 <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 14px;">Tracks staff commissions (Silver registration commissions & dynamic spend split incentives). Click "Manage Staff Directory" to add and manage eligible hotel employees.</p>
                 
-                <div class="table-container">
-                    <table>
+                <div class="table-responsive">
+                    <table id="incentivesTable" class="display" style="width:100%;">
                         <thead>
                             <tr>
                                 <th>Staff Name</th>
@@ -1555,6 +1555,9 @@ try {
             if (view === 'redemptions') {
                 loadRedemptions();
             }
+            if (view === 'incentives') {
+                loadIncentives();
+            }
         });
 
         // Enrolment form select handlers
@@ -1823,40 +1826,8 @@ try {
             // Get redemptions — standalone function handles this
             loadRedemptions();
 
-            // Get incentives & reports
-            $.ajax({
-                url: 'admin_actions.php?action=get_reports',
-                type: 'GET',
-                cache: false,
-                success: function(response) {
-                    if (response.success) {
-                        const data = response.data;
-                        let incHtml = '';
-                        let totalIncentives = 0.000;
-
-                        data.incentives.forEach(inc => {
-                            if (inc.status !== 'Paid') {
-                                totalIncentives += parseFloat(inc.incentive_amount);
-                            }
-
-                            incHtml += `
-                                <tr>
-                                    <td><strong>${inc.staff_name}</strong> (ID: ${inc.staff_id})</td>
-                                    <td>${inc.department}</td>
-                                    <td>${inc.first_name} ${inc.last_name}</td>
-                                    <td><strong style="color:var(--accent-gold);">${inc.membership_number}</strong> (Silver)</td>
-                                    <td>${parseFloat(inc.incentive_amount).toFixed(3)} ${currentCurrency}</td>
-                                    <td>${inc.created_at}</td>
-                                    <td><span class="badge ${inc.status === 'Paid' ? 'badge-active' : 'badge-pending'}">${inc.status}</span></td>
-                                </tr>
-                            `;
-                        });
-
-                        $('#stat-incentives-count').text(totalIncentives.toFixed(3) + ' ' + currentCurrency);
-                        $('#incentives-table-body').html(incHtml);
-                    }
-                }
-            });
+            // Get incentives — standalone function handles this
+            loadIncentives();
 
             // Load settings (Admin Only)
             if ($('#settings-timezone').length > 0) {
@@ -1947,6 +1918,7 @@ try {
 
             loadCampaignLinks();
             loadRedemptions();
+            loadIncentives();
         }
 
         // Open spending modal
@@ -2237,6 +2209,59 @@ try {
                             language: {
                                 search: 'Filter Redemptions:',
                                 emptyTable: 'No redemption requests found.'
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+        let incentivesTable = null;
+
+        function loadIncentives() {
+            $.ajax({
+                url: 'admin_actions.php?action=get_reports',
+                type: 'GET',
+                cache: false,
+                success: function(response) {
+                    if (response.success) {
+                        const data = response.data;
+                        let html = '';
+                        let totalIncentives = 0.000;
+
+                        data.incentives.forEach(inc => {
+                            if (inc.status !== 'Paid') {
+                                totalIncentives += parseFloat(inc.incentive_amount);
+                            }
+
+                            const statusBadge = `<span class="badge ${inc.status === 'Paid' ? 'badge-active' : 'badge-pending'}">${inc.status}</span>`;
+
+                            html += `
+                                <tr>
+                                    <td><strong>${inc.staff_name}</strong><br><small style="color:var(--text-muted);">ID: ${inc.staff_id}</small></td>
+                                    <td>${inc.department}</td>
+                                    <td>${inc.first_name} ${inc.last_name}<br><small style="color:var(--accent-gold);">${inc.membership_number}</small></td>
+                                    <td><span class="badge badge-active" style="background:rgba(16,185,129,0.15); color:#10b981;">Silver</span></td>
+                                    <td><strong style="color:var(--accent-gold);">${parseFloat(inc.incentive_amount).toFixed(3)} ${currentCurrency}</strong></td>
+                                    <td><small>${inc.created_at}</small></td>
+                                    <td>${statusBadge}</td>
+                                </tr>
+                            `;
+                        });
+
+                        $('#stat-incentives-count').text(totalIncentives.toFixed(3) + ' ' + currentCurrency);
+
+                        if ($.fn.DataTable.isDataTable('#incentivesTable')) {
+                            $('#incentivesTable').DataTable().destroy();
+                        }
+                        $('#incentives-table-body').html(html);
+                        incentivesTable = $('#incentivesTable').DataTable({
+                            pageLength: 10,
+                            ordering: true,
+                            order: [[4, 'desc']],
+                            language: {
+                                search: 'Filter Incentives:',
+                                emptyTable: 'No incentive records found.'
                             }
                         });
                     }
